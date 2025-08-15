@@ -4,15 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Blog</title>
-  <!-- ABSOLUTE PATH for GitHub Pages -->
   <link href="/Iptv/css/tailwind.css" rel="stylesheet">
 </head>
-<body>
-  <!-- Mandatory container with ID -->
-  <div id="app" class="container mx-auto p-4">
-    <h1 class="text-3xl font-bold mb-6">Latest Posts</h1>
+<body class="bg-gray-50">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <h1 class="text-3xl font-bold mb-8">Latest Posts</h1>
     <div id="posts-container">
-      <!-- Loading indicator -->
       <div class="text-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto"></div>
         <p class="mt-2 text-gray-500">Loading posts...</p>
@@ -20,9 +17,76 @@
     </div>
   </div>
 
-  <!-- ABSOLUTE PATHS for JS -->
   <script src="/Iptv/js/marked.js"></script>
-  <script src="/Iptv/js/github-api.js"></script>
-  <script src="/Iptv/js/app.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      // 1. Load posts list
+      const postsResponse = await fetch(
+        'https://raw.githubusercontent.com/deyaaelmasry1/Iptv/main/posts/index.json?t=' + Date.now()
+      );
+      
+      if (!postsResponse.ok) {
+        throw new Error('Failed to load posts list');
+      }
+      
+      const posts = await postsResponse.json();
+      const container = document.getElementById('posts-container');
+      
+      // 2. Handle empty state
+      if (!posts || posts.length === 0) {
+        container.innerHTML = `
+          <div class="bg-yellow-50 p-4 rounded-lg text-center">
+            <p>No posts yet. <a href="/Iptv/admin/" class="text-blue-600 hover:underline">Create your first post</a></p>
+          </div>
+        `;
+        return;
+      }
+      
+      // 3. Load and render each post
+      container.innerHTML = '';
+      
+      for (const postFilename of posts) {
+        try {
+          const postResponse = await fetch(
+            `https://raw.githubusercontent.com/deyaaelmasry1/Iptv/main/posts/${postFilename}?t=${Date.now()}`
+          );
+          
+          if (postResponse.ok) {
+            const content = await postResponse.text();
+            const postDate = postFilename.split('-').slice(0,3).join('-');
+            const postTitle = postFilename.replace('.md','').split('-').slice(3).join(' ');
+            
+            const postEl = document.createElement('article');
+            postEl.className = 'mb-8 bg-white p-6 rounded-lg shadow';
+            postEl.innerHTML = `
+              <h2 class="text-xl font-bold mb-2">${postTitle}</h2>
+              <p class="text-gray-500 text-sm mb-4">Posted on ${new Date(postDate).toLocaleDateString()}</p>
+              <div class="prose max-w-none">${marked.parse(content.substring(0, 200) + '...')}</div>
+              <a href="/Iptv/post/${postFilename.replace('.md','')}.html" 
+                 class="inline-block mt-4 text-blue-600 hover:underline">
+                Read more →
+              </a>
+            `;
+            container.appendChild(postEl);
+          }
+        } catch (e) {
+          console.error(`Failed to load post ${postFilename}:`, e);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to load posts:', error);
+      document.getElementById('posts-container').innerHTML = `
+        <div class="bg-red-50 p-4 rounded-lg">
+          <p class="text-red-600">Error loading posts. Please try again later.</p>
+          <button onclick="window.location.reload()" class="mt-2 px-3 py-1 bg-gray-100 rounded">
+            ↻ Reload
+          </button>
+        </div>
+      `;
+    }
+  });
+  </script>
 </body>
 </html>
