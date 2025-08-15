@@ -1,70 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Blog</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link href="/Iptv/css/tailwind.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50">
   <div class="container mx-auto px-4 py-8 max-w-4xl">
     <h1 class="text-3xl font-bold mb-8">Latest Posts</h1>
     <div id="posts-container">
-      <div class="text-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto"></div>
-        <p class="mt-2 text-gray-500">Loading posts...</p>
-      </div>
+      <p>Loading posts...</p>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/Iptv/js/marked.js"></script>
   <script src="/Iptv/js/github-api.js"></script>
   <script>
-    (async function(){
-      const cms = new GitHubCMS();
-      const container = document.getElementById('posts-container');
+  document.addEventListener('DOMContentLoaded', async () => {
+    const cms = new GitHubCMS();
+    const container = document.getElementById('posts-container');
 
-      try {
-        const posts = await cms.getPosts();
-        if (!posts || posts.length === 0) {
-          container.innerHTML = `
-            <div class="bg-yellow-50 p-4 rounded-lg text-center">
-              <p>No posts yet. <a href="/Iptv/admin/" class="text-blue-600 hover:underline">Create your first post</a></p>
-            </div>`;
-          return;
-        }
-
-        container.innerHTML = '';
-        for (const file of posts) {
-          try {
-            const md = await cms.getPostContent(file);
-            const excerpt = md.split(/\n\s*\n/)[0]; // first paragraph
-            const slug = file.replace(/\.md$/i,'');
-            const title = GitHubCMS.titleFromFilename(file);
-            const date  = GitHubCMS.dateFromFilename(file);
-
-            const el = document.createElement('article');
-            el.className = 'mb-8 bg-white p-6 rounded-lg shadow';
-            el.innerHTML = `
-              <h2 class="text-xl font-bold mb-1">${title}</h2>
-              <p class="text-gray-500 text-sm mb-4">${date}</p>
-              <div class="prose max-w-none">${marked.parse(excerpt)}</div>
-              <a href="/Iptv/post/?f=${encodeURIComponent(file)}" class="inline-block mt-4 text-blue-600 hover:underline">Read more →</a>
-            `;
-            container.appendChild(el);
-          } catch (e) {
-            console.error('Failed to render', file, e);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        container.innerHTML = `
-          <div class="bg-red-50 p-4 rounded-lg">
-            <p class="text-red-600">Error loading posts. Please try again later.</p>
-            <button onclick="location.reload()" class="mt-2 px-3 py-1 bg-gray-900 text-white rounded">↻ Reload</button>
-          </div>`;
+    try {
+      const posts = await cms.getPosts();
+      if (!posts.length) {
+        container.innerHTML = `<p>No posts yet. <a href="/Iptv/admin/">Create one</a></p>`;
+        return;
       }
-    })();
+
+      container.innerHTML = '';
+      for (const file of posts) {
+        const res = await fetch(`https://raw.githubusercontent.com/deyaaelmasry1/Iptv/main/posts/${file}`);
+        const text = await res.text();
+        container.innerHTML += `
+          <article class="mb-6 bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold">${file.replace(/^\d{4}-\d{2}-\d{2}-|\.md$/g, '').replace(/-/g, ' ')}</h2>
+            <div class="prose">${marked.parse(text.substring(0, 200) + '...')}</div>
+          </article>
+        `;
+      }
+    } catch (err) {
+      container.innerHTML = `<p class="text-red-500">Error loading posts</p>`;
+    }
+  });
   </script>
 </body>
 </html>
