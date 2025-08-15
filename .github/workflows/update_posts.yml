@@ -1,0 +1,27 @@
+name: Update Posts Index
+
+on:
+  push:
+    paths:
+      - 'posts/*.md'
+  workflow_dispatch:
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Generate index
+      run: |
+        echo "[" > posts/index.json
+        ls -1 posts/*.md | sed 's/posts\///' | awk '{printf "\"%s\"%s\n", $0, (NR==FNR ? "" : ",")}' >> posts/index.json
+        echo "]" >> posts/index.json
+        
+    - name: Commit changes
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git add posts/index.json
+        git commit -m "Update posts index" || echo "No changes to commit"
+        git push
