@@ -7,7 +7,18 @@
   <link href="/css/tailwind.css" rel="stylesheet">
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <!-- The theme manager will inject layout -->
+    <main id="main-container" class="container mx-auto px-4 py-8 max-w-3xl">
+      <article class="bg-white rounded-lg shadow p-6">
+        <h1 id="post-title" class="text-3xl font-bold mb-2">Loading...</h1>
+        <p id="post-meta" class="text-gray-500 text-sm mb-6">Please wait</p>
+        <div id="post-content" class="prose max-w-none text-gray-800">
+          <p>Loading post content...</p>
+        </div>
+      </article>
+    </main>
+  </div>
 
   <script src="/js/marked.js"></script>
   <script src="/js/github-api.js"></script>
@@ -19,27 +30,32 @@
     theme.renderFullPage('post', async () => {
       const postSlug = window.location.pathname.split('/').pop().replace('.html', '');
       const postUrl = `https://raw.githubusercontent.com/${cms.owner}/${cms.repo}/main/posts/${postSlug}.md`;
-      
+
       try {
         const response = await fetch(postUrl);
-        const markdown = await response.text();
+        if (!response.ok) throw new Error('Post not found');
         
-        // Extract date from filename (format: YYYY-MM-DD-slug.md)
+        const markdown = await response.text();
+
+        // Extract date from filename
         const dateMatch = postSlug.match(/^(\d{4}-\d{2}-\d{2})-/);
         const postDate = dateMatch ? new Date(dateMatch[1]) : new Date();
-        
-        document.title = `${postSlug.split('-').slice(3).join(' ')} | My Blog`;
-        document.getElementById('post-title').textContent = postSlug.split('-').slice(3).join(' ');
-        document.getElementById('post-meta').innerHTML = `
-          Published on ${postDate.toLocaleDateString()}
-        `;
+
+        // Generate a readable title
+        const title = postSlug
+          .replace(/^\d{4}-\d{2}-\d{2}-/, '')
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
+
+        document.title = `${title} | My Blog`;
+        document.getElementById('post-title').textContent = title;
+        document.getElementById('post-meta').innerHTML = `Published on ${postDate.toLocaleDateString()}`;
         document.getElementById('post-content').innerHTML = marked.parse(markdown);
       } catch (error) {
+        console.error(error);
         document.getElementById('main-container').innerHTML = `
-          <div class="container mx-auto px-4 py-8">
-            <div class="bg-red-50 border-l-4 border-red-500 p-4">
-              <p class="text-red-700">Error loading post. Please try again later.</p>
-            </div>
+          <div class="bg-red-50 border-l-4 border-red-500 p-4">
+            <p class="text-red-700">Error loading post. Please try again later.</p>
           </div>
         `;
       }
