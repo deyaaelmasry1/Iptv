@@ -3,48 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
+  <title>Admin Dashboard - GitHub CMS</title>
   <link href="/Iptv/css/tailwind.css" rel="stylesheet">
   <style>
-    .success-message {
-      animation: fadeOut 5s forwards;
+    .status-message {
+      transition: all 0.3s ease;
     }
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { opacity: 0; display: none; }
+    .pulse {
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-50 min-h-screen">
   <div class="container mx-auto px-4 py-8">
-    <!-- Success Message Container (initially hidden) -->
-    <div id="success-message" class="hidden fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg success-message">
-      Post created successfully! <span class="font-bold">✓</span>
+    <!-- Success Message Toast -->
+    <div id="success-toast" class="hidden fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+      <div class="flex items-center">
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span>Post created successfully!</span>
+      </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
-      <h1 class="text-2xl font-bold mb-6">Create New Post</h1>
-      
-      <form id="post-form">
-        <div class="mb-4">
-          <label class="block text-gray-700 mb-2">Title *</label>
-          <input type="text" id="post-title" class="w-full p-2 border rounded" required>
-        </div>
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+      <div class="p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Create New Post</h1>
+        <p class="text-gray-600 mb-6">Add content to your GitHub-hosted blog</p>
         
-        <div class="mb-4">
-          <label class="block text-gray-700 mb-2">Content *</label>
-          <textarea id="post-content" rows="12" class="w-full p-2 border rounded font-mono" required></textarea>
-          <p class="text-sm text-gray-500 mt-1">Markdown formatting supported</p>
-        </div>
-        
-        <div class="flex items-center space-x-3">
-          <button type="submit" id="submit-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
-            Publish Post
-          </button>
-          <div id="status-message" class="text-sm min-w-[200px]"></div>
-        </div>
-      </form>
+        <form id="post-form" class="space-y-6">
+          <div>
+            <label for="post-title" class="block text-sm font-medium text-gray-700 mb-1">Post Title *</label>
+            <input type="text" id="post-title" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label for="post-content" class="block text-sm font-medium text-gray-700 mb-1">Content *</label>
+            <textarea id="post-content" rows="12" required
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+            <p class="mt-1 text-sm text-gray-500">Markdown formatting supported</p>
+          </div>
+          
+          <div class="flex items-center">
+            <button type="submit" id="submit-btn"
+                    class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+              Publish Post
+            </button>
+            <div id="status-message" class="ml-4 status-message text-sm"></div>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -54,7 +69,7 @@
     const postForm = document.getElementById('post-form');
     const submitBtn = document.getElementById('submit-btn');
     const statusMessage = document.getElementById('status-message');
-    const successMessage = document.getElementById('success-message');
+    const successToast = document.getElementById('success-toast');
     const cms = new GitHubCMS();
 
     postForm.addEventListener('submit', async (e) => {
@@ -63,45 +78,69 @@
       const title = document.getElementById('post-title').value.trim();
       const content = document.getElementById('post-content').value.trim();
       
+      // Validation
       if (!title || !content) {
-        showStatus('Please fill in all fields', 'red');
+        showStatus('Please fill in all required fields', 'red');
         return;
       }
 
+      // Disable button and show loading state
       submitBtn.disabled = true;
-      showStatus('Creating post...', 'blue');
+      submitBtn.innerHTML = `
+        <span class="flex items-center">
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Publishing...
+        </span>
+      `;
+      showStatus('Creating your post...', 'blue pulse');
 
       try {
+        // Create post via GitHub API
         const result = await cms.createPost(title, content);
         
-        if (result && result.content) {
-          // Show persistent status
-          showStatus('Post created! Updating index...', 'green');
-          
-          // Show floating success message
-          successMessage.classList.remove('hidden');
-          setTimeout(() => {
-            successMessage.classList.add('hidden');
-          }, 5000);
+        if (result.success) {
+          // Show success feedback
+          showStatus('Post created successfully!', 'green');
+          showSuccessToast();
           
           // Reset form but keep title for convenience
           document.getElementById('post-content').value = '';
           document.getElementById('post-title').focus();
           
-          // Optional: Auto-scroll to show message
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // Open GitHub to verify (after delay)
+          setTimeout(() => {
+            window.open(result.url, '_blank');
+          }, 1500);
         }
       } catch (error) {
         console.error('Post creation failed:', error);
         showStatus(`Error: ${error.message}`, 'red');
       } finally {
+        // Reset button state
         submitBtn.disabled = false;
+        submitBtn.textContent = 'Publish Post';
       }
     });
 
     function showStatus(message, color) {
       statusMessage.textContent = message;
-      statusMessage.className = `text-sm text-${color}-500 min-w-[200px]`;
+      statusMessage.className = `status-message text-sm font-medium text-${color}-600`;
+      
+      if (color === 'pulse') {
+        statusMessage.classList.add('pulse');
+      } else {
+        statusMessage.classList.remove('pulse');
+      }
+    }
+
+    function showSuccessToast() {
+      successToast.classList.remove('hidden');
+      setTimeout(() => {
+        successToast.classList.add('hidden');
+      }, 5000);
     }
   });
   </script>
