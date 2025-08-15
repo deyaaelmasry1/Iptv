@@ -4,24 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - GitHub CMS</title>
-  <link href="/Iptv/css/tailwind.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    .status-message {
-      transition: all 0.3s ease;
-    }
-    .pulse {
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 0.6; }
-      50% { opacity: 1; }
-      100% { opacity: 0.6; }
-    }
+    .status-message { transition: all 0.3s ease; }
+    .pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% {opacity: 0.6;} 50% {opacity: 1;} 100% {opacity: 0.6;} }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
   <div class="container mx-auto px-4 py-8">
-    <!-- Success Message Toast -->
     <div id="success-toast" class="hidden fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
       <div class="flex items-center">
         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +22,6 @@
       </div>
     </div>
 
-    <!-- Main Content -->
     <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
       <div class="p-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">Create New Post</h1>
@@ -63,86 +53,69 @@
     </div>
   </div>
 
-  <script src="/Iptv/js/github-api.js"></script>
+  <script src="github-api.js"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const postForm = document.getElementById('post-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const statusMessage = document.getElementById('status-message');
-    const successToast = document.getElementById('success-toast');
-    const cms = new GitHubCMS();
+    document.addEventListener('DOMContentLoaded', () => {
+      const postForm = document.getElementById('post-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const statusMessage = document.getElementById('status-message');
+      const successToast = document.getElementById('success-toast');
+      const cms = new GitHubCMS();
 
-    postForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const title = document.getElementById('post-title').value.trim();
-      const content = document.getElementById('post-content').value.trim();
-      
-      // Validation
-      if (!title || !content) {
-        showStatus('Please fill in all required fields', 'red');
-        return;
+      postForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('post-title').value.trim();
+        const content = document.getElementById('post-content').value.trim();
+        
+        if (!title || !content) {
+          showStatus('Please fill in all required fields', 'red');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="flex items-center">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Publishing...
+          </span>`;
+        showStatus('Creating your post...', 'blue pulse');
+
+        try {
+          const result = await cms.createPost(title, content);
+          if (result.success) {
+            showStatus('Post created successfully!', 'green');
+            showSuccessToast();
+            document.getElementById('post-content').value = '';
+            document.getElementById('post-title').focus();
+            setTimeout(() => window.open(result.url, '_blank'), 1500);
+          }
+        } catch (error) {
+          console.error('Post creation failed:', error);
+          showStatus(`Error: ${error.message}`, 'red');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Publish Post';
+        }
+      });
+
+      function showStatus(message, color) {
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message text-sm font-medium text-${color}-600`;
+        if (color.includes('pulse')) {
+          statusMessage.classList.add('pulse');
+        } else {
+          statusMessage.classList.remove('pulse');
+        }
       }
 
-      // Disable button and show loading state
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `
-        <span class="flex items-center">
-          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Publishing...
-        </span>
-      `;
-      showStatus('Creating your post...', 'blue pulse');
-
-      try {
-        // Create post via GitHub API
-        const result = await cms.createPost(title, content);
-        
-        if (result.success) {
-          // Show success feedback
-          showStatus('Post created successfully!', 'green');
-          showSuccessToast();
-          
-          // Reset form but keep title for convenience
-          document.getElementById('post-content').value = '';
-          document.getElementById('post-title').focus();
-          
-          // Open GitHub to verify (after delay)
-          setTimeout(() => {
-            window.open(result.url, '_blank');
-          }, 1500);
-        }
-      } catch (error) {
-        console.error('Post creation failed:', error);
-        showStatus(`Error: ${error.message}`, 'red');
-      } finally {
-        // Reset button state
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Publish Post';
+      function showSuccessToast() {
+        successToast.classList.remove('hidden');
+        setTimeout(() => successToast.classList.add('hidden'), 5000);
       }
     });
-
-    function showStatus(message, color) {
-      statusMessage.textContent = message;
-      statusMessage.className = `status-message text-sm font-medium text-${color}-600`;
-      
-      if (color === 'pulse') {
-        statusMessage.classList.add('pulse');
-      } else {
-        statusMessage.classList.remove('pulse');
-      }
-    }
-
-    function showSuccessToast() {
-      successToast.classList.remove('hidden');
-      setTimeout(() => {
-        successToast.classList.add('hidden');
-      }, 5000);
-    }
-  });
   </script>
 </body>
 </html>
