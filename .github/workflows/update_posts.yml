@@ -12,26 +12,26 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Create posts directory
+      run: mkdir -p posts
+      
     - name: Generate index
       run: |
-        # Create posts directory if it doesn't exist
-        mkdir -p posts
-        
-        # Generate proper JSON array of posts
-        echo "Generating posts index..."
-        files=$(ls -1 posts/*.md 2>/dev/null || echo "")
+        echo "Creating posts index..."
+        files=$(find posts -name "*.md" | sort -r)
         
         if [ -z "$files" ]; then
           echo "[]" > posts/index.json
-          echo "No posts found, created empty index"
+          echo "No posts found - created empty index"
         else
           echo "[" > posts/index.json
-          ls -1 posts/*.md | sed 's/posts\///' | \
-            awk '{printf "\"%s\"%s\n", $0, (NR==FNR ? "" : ",")}' >> posts/index.json
+          echo "$files" | sed 's/posts\///' | \
+            awk '{printf "\"%s\"%s\n", $0, (NR>1 ? "," : "")}' >> posts/index.json
           echo "]" >> posts/index.json
-          echo "Index generated with $(ls -1 posts/*.md | wc -l) posts"
+          echo "Created index with $(echo "$files" | wc -l) posts"
         fi
         
+        echo "Index content:"
         cat posts/index.json
         
     - name: Commit changes
@@ -39,5 +39,5 @@ jobs:
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
         git add posts/index.json
-        git diff --quiet && git diff --cached --quiet || git commit -m "Update posts index"
+        git diff --cached --quiet || git commit -m "Update posts index"
         git push
