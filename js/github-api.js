@@ -8,44 +8,62 @@ class GitHubCMS {
   }
 
   async createPost(title, content) {
+    // Validate inputs
+    if (!title?.trim() || !content?.trim()) {
+      throw new Error('Title and content are required');
+    }
+
     if (!this.token) {
-      throw new Error('Missing GitHub token - please complete setup');
+      throw new Error('Missing GitHub token - complete setup first');
     }
 
     // Generate filename
     const date = new Date().toISOString().split('T')[0];
     const cleanTitle = title.toLowerCase()
-      .replace(/[^\w]+/g, '-')
+      .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
     const filename = `posts/${date}-${cleanTitle}.md`;
 
     try {
-      console.log('Attempting to create post:', filename); // Debug log
-      
-      const response = await fetch(`${this.baseUrl}/repos/${this.owner}/${this.repo}/contents/${filename}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `token ${this.token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: `Add post: ${title}`,
-          content: btoa(unescape(encodeURIComponent(content)))
-        })
-      });
+      // 1. Create the post file
+      const createResponse = await fetch(
+        `${this.baseUrl}/repos/${this.owner}/${this.repo}/contents/${filename}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${this.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Add post: ${title}`,
+            content: btoa(unescape(encodeURIComponent(content)))
+          })
+        }
+      );
 
-      console.log('GitHub API response:', response.status); // Debug log
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('GitHub API error:', errorData); // Debug log
-        throw new Error(errorData.message || 'Failed to create post');
+      if (!createResponse.ok) {
+        const error = await createResponse.json();
+        throw new Error(error.message || 'Failed to create post file');
       }
 
-      const result = await response.json();
-      console.log('Post created successfully:', result); // Debug log
-      
+      // 2. Trigger index update
+      const workflowResponse = await fetch(
+        `${this.baseUrl}/repos/${this.owner}/${this.repo}/actions/workflows/update_posts.yml/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `token ${this.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify({ ref: 'main' })
+        }
+      );
+
+      if (!workflowResponse.ok) {
+        console.warn('Failed to trigger index update (normal for first post)');
+      }
+
       return {
         success: true,
         filename: filename,
@@ -53,7 +71,7 @@ class GitHubCMS {
       };
 
     } catch (error) {
-      console.error('Full error details:', error); // Debug log
+      console.error('Post creation failed:', error);
       throw new Error(`Post creation failed: ${error.message}`);
     }
   }
