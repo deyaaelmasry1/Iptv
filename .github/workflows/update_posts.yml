@@ -4,40 +4,38 @@ on:
   push:
     paths:
       - 'posts/*.md'
-  workflow_dispatch:
+      - 'posts/*.markdown'
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   update-index:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4  # Updated to latest version
     
     - name: Generate index
       run: |
-        # Create posts directory if it doesn't exist
+        # Create directory if it doesn't exist
         mkdir -p posts
         
-        # Generate proper JSON array of posts
-        echo "Generating posts index..."
-        files=$(ls -1 posts/*.md 2>/dev/null || echo "")
-        
-        if [ -z "$files" ]; then
-          echo "[]" > posts/index.json
-          echo "No posts found, created empty index"
-        else
-          echo "[" > posts/index.json
-          ls -1 posts/*.md | sed 's/posts\///' | \
-            awk '{printf "\"%s\"%s\n", $0, (NR==FNR ? "" : ",")}' >> posts/index.json
-          echo "]" >> posts/index.json
-          echo "Index generated with $(ls -1 posts/*.md | wc -l) posts"
+        # Generate JSON array of posts
+        echo "[" > posts/index.json
+        if ls -1 posts/*.md posts/*.markdown 2>/dev/null; then
+          ls -1 posts/*.md posts/*.markdown 2>/dev/null | \
+            sed 's/posts\///' | \
+            awk 'NR>1 {printf ","} {printf "\"%s\"", $0}' >> posts/index.json
         fi
+        echo "]" >> posts/index.json
         
+        # Verify the generated file
+        echo "Generated index:"
         cat posts/index.json
         
     - name: Commit changes
+      if: success()
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
         git add posts/index.json
-        git diff --quiet && git diff --cached --quiet || git commit -m "Update posts index"
+        git diff-index --quiet HEAD || git commit -m "Update posts index"
         git push
