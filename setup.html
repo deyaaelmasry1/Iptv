@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Setup</title>
+  <link href="/css/tailwind.css" rel="stylesheet">
+  <style>
+    .step {
+      display: none;
+    }
+    .step.active {
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-6 text-center">CMS Setup</h1>
+    
+    <div id="setup-steps">
+      <!-- Step 1: Repository Info -->
+      <div class="step active" data-step="1">
+        <h2 class="text-xl font-semibold mb-4">GitHub Repository</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-gray-700 mb-1">GitHub Username</label>
+            <input type="text" id="github-username" class="w-full p-2 border rounded" placeholder="your-username">
+          </div>
+          <div>
+            <label class="block text-gray-700 mb-1">Repository Name</label>
+            <input type="text" id="repo-name" class="w-full p-2 border rounded" placeholder="my-blog">
+          </div>
+          <div class="text-sm text-gray-500">
+            Note: This repository must already exist on your GitHub account.
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 2: GitHub Token -->
+      <div class="step" data-step="2">
+        <h2 class="text-xl font-semibold mb-4">GitHub Access</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-gray-700 mb-1">Personal Access Token</label>
+            <input type="password" id="github-token" class="w-full p-2 border rounded" placeholder="ghp_...">
+            <div class="text-sm text-gray-500 mt-1">
+              Create a token with <code class="bg-gray-100 px-1 rounded">repo</code> permissions at
+              <a href="https://github.com/settings/tokens/new" target="_blank" class="text-blue-500 hover:underline">
+                GitHub Settings
+              </a>
+            </div>
+          </div>
+          <div class="p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-sm">
+            <strong>Important:</strong> Never share this token or commit it to your repository.
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 3: Confirmation -->
+      <div class="step" data-step="3">
+        <h2 class="text-xl font-semibold mb-4">Ready to Go!</h2>
+        <div class="space-y-4 text-center">
+          <svg class="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <h3 class="text-lg font-medium">Setup Complete</h3>
+          <p class="text-gray-600">Your GitHub CMS is ready to use.</p>
+          <div id="setup-summary" class="text-left bg-gray-50 p-3 rounded text-sm"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mt-6 flex justify-between items-center">
+      <button id="prev-step" class="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50" disabled>
+        Previous
+      </button>
+      <div class="text-sm text-gray-500" id="step-indicator">Step 1 of 3</div>
+      <button id="next-step" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+        Next
+      </button>
+    </div>
+  </div>
+
+  <script src="/js/setup.js"></script>
+</body>
+</html>
