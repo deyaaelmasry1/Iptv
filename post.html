@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post View</title>
+  <link href="/css/tailwind.css" rel="stylesheet">
+</head>
+<body>
+  <div id="app"></div>
+
+  <script src="/js/marked.js"></script>
+  <script src="/js/github-api.js"></script>
+  <script src="/js/theme-manager.js"></script>
+  <script>
+    const theme = new ThemeManager();
+    const cms = new GitHubCMS();
+    
+    theme.renderFullPage('post', async () => {
+      const postSlug = window.location.pathname.split('/').pop().replace('.html', '');
+      const postUrl = `https://raw.githubusercontent.com/${cms.owner}/${cms.repo}/main/posts/${postSlug}.md`;
+      
+      try {
+        const response = await fetch(postUrl);
+        const markdown = await response.text();
+        
+        // Extract date from filename (format: YYYY-MM-DD-slug.md)
+        const dateMatch = postSlug.match(/^(\d{4}-\d{2}-\d{2})-/);
+        const postDate = dateMatch ? new Date(dateMatch[1]) : new Date();
+        
+        document.title = `${postSlug.split('-').slice(3).join(' ')} | My Blog`;
+        document.getElementById('post-title').textContent = postSlug.split('-').slice(3).join(' ');
+        document.getElementById('post-meta').innerHTML = `
+          Published on ${postDate.toLocaleDateString()}
+        `;
+        document.getElementById('post-content').innerHTML = marked.parse(markdown);
+      } catch (error) {
+        document.getElementById('main-container').innerHTML = `
+          <div class="container mx-auto px-4 py-8">
+            <div class="bg-red-50 border-l-4 border-red-500 p-4">
+              <p class="text-red-700">Error loading post. Please try again later.</p>
+            </div>
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
