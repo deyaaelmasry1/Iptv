@@ -1,33 +1,15 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // Verify authentication
+  const config = JSON.parse(localStorage.getItem('github-cms-config'));
+  if (!config?.token) {
+    alert('Please complete setup first');
+    window.location.href = '/Iptv/setup.html';
+    return;
+  }
+
   const cms = new GitHubCMS();
   const postForm = document.getElementById('post-form');
-  const previewBtn = document.getElementById('preview-btn');
-  const previewPanel = document.getElementById('preview-panel');
-  const postPreview = document.getElementById('post-preview');
-  const closePreview = document.getElementById('close-preview');
 
-  // Preview functionality
-  previewBtn.addEventListener('click', () => {
-    const title = document.getElementById('post-title').value;
-    const content = document.getElementById('post-content').value;
-    
-    if (!title || !content) {
-      alert('Please enter both title and content to preview');
-      return;
-    }
-    
-    postPreview.innerHTML = `
-      <h1>${title}</h1>
-      ${marked.parse(content)}
-    `;
-    previewPanel.classList.remove('hidden');
-  });
-
-  closePreview.addEventListener('click', () => {
-    previewPanel.classList.add('hidden');
-  });
-
-  // Form submission
   postForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -45,10 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('Post created successfully!');
         postForm.reset();
       } else {
-        throw new Error('Post creation failed');
+        throw new Error('Failed to create post');
       }
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Error:', error);
       alert(`Error: ${error.message}`);
     }
   });
