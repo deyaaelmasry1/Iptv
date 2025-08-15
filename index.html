@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Blog</title>
-  <link href="/Iptv/css/tailwind.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50">
   <div class="container mx-auto px-4 py-8 max-w-4xl">
@@ -17,64 +17,54 @@
     </div>
   </div>
 
-  <script src="/Iptv/js/marked.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="/Iptv/js/github-api.js"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    const cms = new GitHubCMS();
-    const container = document.getElementById('posts-container');
+    (async function(){
+      const cms = new GitHubCMS();
+      const container = document.getElementById('posts-container');
 
-    try {
-      const posts = await cms.getPosts();
-      
-      if (!posts || posts.length === 0) {
-        container.innerHTML = `
-          <div class="bg-yellow-50 p-4 rounded-lg text-center">
-            <p>No posts yet. <a href="/Iptv/admin/" class="text-blue-600 hover:underline">Create your first post</a></p>
-          </div>
-        `;
-        return;
-      }
-      
-      container.innerHTML = '';
-      
-      for (const postFilename of posts) {
-        try {
-          const response = await fetch(
-            `https://raw.githubusercontent.com/deyaaelmasry1/Iptv/main/posts/${postFilename}?t=${Date.now()}`
-          );
-          const content = await response.text();
-          
-          const postEl = document.createElement('article');
-          postEl.className = 'mb-8 bg-white p-6 rounded-lg shadow';
-          postEl.innerHTML = `
-            <h2 class="text-xl font-bold mb-2">
-              ${postFilename.replace(/^\d{4}-\d{2}-\d{2}-|\.md$/g, '').replace(/-/g, ' ')}
-            </h2>
-            <div class="prose max-w-none">${marked.parse(content.substring(0, 200) + '...')}</div>
-            <a href="/Iptv/post/${postFilename.replace('.md', '')}.html" 
-               class="inline-block mt-4 text-blue-600 hover:underline">
-              Read more →
-            </a>
-          `;
-          container.appendChild(postEl);
-        } catch (e) {
-          console.error(`Failed to load post ${postFilename}:`, e);
+      try {
+        const posts = await cms.getPosts();
+        if (!posts || posts.length === 0) {
+          container.innerHTML = `
+            <div class="bg-yellow-50 p-4 rounded-lg text-center">
+              <p>No posts yet. <a href="/Iptv/admin/" class="text-blue-600 hover:underline">Create your first post</a></p>
+            </div>`;
+          return;
         }
+
+        container.innerHTML = '';
+        for (const file of posts) {
+          try {
+            const md = await cms.getPostContent(file);
+            const excerpt = md.split(/\n\s*\n/)[0]; // first paragraph
+            const slug = file.replace(/\.md$/i,'');
+            const title = GitHubCMS.titleFromFilename(file);
+            const date  = GitHubCMS.dateFromFilename(file);
+
+            const el = document.createElement('article');
+            el.className = 'mb-8 bg-white p-6 rounded-lg shadow';
+            el.innerHTML = `
+              <h2 class="text-xl font-bold mb-1">${title}</h2>
+              <p class="text-gray-500 text-sm mb-4">${date}</p>
+              <div class="prose max-w-none">${marked.parse(excerpt)}</div>
+              <a href="/Iptv/post/?f=${encodeURIComponent(file)}" class="inline-block mt-4 text-blue-600 hover:underline">Read more →</a>
+            `;
+            container.appendChild(el);
+          } catch (e) {
+            console.error('Failed to render', file, e);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = `
+          <div class="bg-red-50 p-4 rounded-lg">
+            <p class="text-red-600">Error loading posts. Please try again later.</p>
+            <button onclick="location.reload()" class="mt-2 px-3 py-1 bg-gray-900 text-white rounded">↻ Reload</button>
+          </div>`;
       }
-      
-    } catch (error) {
-      console.error('Failed to load posts:', error);
-      container.innerHTML = `
-        <div class="bg-red-50 p-4 rounded-lg">
-          <p class="text-red-600">Error loading posts. Please try again later.</p>
-          <button onclick="window.location.reload()" class="mt-2 px-3 py-1 bg-gray-100 rounded">
-            ↻ Reload
-          </button>
-        </div>
-      `;
-    }
-  });
+    })();
   </script>
 </body>
 </html>
