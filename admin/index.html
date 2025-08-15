@@ -13,13 +13,13 @@
       
       <form id="post-form">
         <div class="mb-4">
-          <label class="block text-gray-700 mb-2">Title</label>
+          <label class="block text-gray-700 mb-2">Title *</label>
           <input type="text" id="post-title" class="w-full p-2 border rounded" required>
         </div>
         
         <div class="mb-4">
-          <label class="block text-gray-700 mb-2">Content</label>
-          <textarea id="post-content" rows="12" class="w-full p-2 border rounded" required></textarea>
+          <label class="block text-gray-700 mb-2">Content *</label>
+          <textarea id="post-content" rows="12" class="w-full p-2 border rounded font-mono" required></textarea>
           <p class="text-sm text-gray-500 mt-1">Markdown formatting supported</p>
         </div>
         
@@ -43,48 +43,39 @@
 
     postForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
       const title = document.getElementById('post-title').value.trim();
       const content = document.getElementById('post-content').value.trim();
       
       if (!title || !content) {
-        statusMessage.textContent = 'Please fill in all fields';
-        statusMessage.className = 'text-sm text-red-500';
+        showStatus('Please fill in all fields', 'red');
         return;
       }
 
       submitBtn.disabled = true;
-      statusMessage.textContent = 'Creating post...';
-      statusMessage.className = 'text-sm text-blue-500';
+      showStatus('Creating post...', 'blue');
 
       try {
         const result = await cms.createPost(title, content);
+        showStatus('✓ Post created successfully!', 'green');
+        postForm.reset();
         
-        if (result.content) {
-          statusMessage.textContent = '✓ Post created successfully!';
-          statusMessage.className = 'text-sm text-green-500';
-          postForm.reset();
-          
-          // Force GitHub Pages rebuild
-          fetch(`https://api.github.com/repos/deyaaelmasry1/Iptv/actions/workflows/update_posts.yml/dispatches`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `token ${cms.token}`,
-              'Accept': 'application/vnd.github.v3+json'
-            },
-            body: JSON.stringify({
-              ref: 'main'
-            })
-          }).catch(e => console.log('Rebuild trigger failed (normal for first posts)', e));
-        }
+        // Auto-refresh posts after 5 seconds
+        setTimeout(() => {
+          showStatus('Updating posts list...', 'blue');
+        }, 5000);
+        
       } catch (error) {
+        showStatus(`Error: ${error.message}`, 'red');
         console.error('Post creation failed:', error);
-        statusMessage.textContent = `Error: ${error.message}`;
-        statusMessage.className = 'text-sm text-red-500';
       } finally {
         submitBtn.disabled = false;
       }
     });
+
+    function showStatus(message, color) {
+      statusMessage.textContent = message;
+      statusMessage.className = `text-sm text-${color}-500`;
+    }
   });
   </script>
 </body>
