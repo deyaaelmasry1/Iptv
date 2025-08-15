@@ -34,6 +34,58 @@
   </div>
 
   <script src="/Iptv/js/github-api.js"></script>
-  <script src="/Iptv/js/admin.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const postForm = document.getElementById('post-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const statusMessage = document.getElementById('status-message');
+    const cms = new GitHubCMS();
+
+    postForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const title = document.getElementById('post-title').value.trim();
+      const content = document.getElementById('post-content').value.trim();
+      
+      if (!title || !content) {
+        statusMessage.textContent = 'Please fill in all fields';
+        statusMessage.className = 'text-sm text-red-500';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      statusMessage.textContent = 'Creating post...';
+      statusMessage.className = 'text-sm text-blue-500';
+
+      try {
+        const result = await cms.createPost(title, content);
+        
+        if (result.content) {
+          statusMessage.textContent = '✓ Post created successfully!';
+          statusMessage.className = 'text-sm text-green-500';
+          postForm.reset();
+          
+          // Force GitHub Pages rebuild
+          fetch(`https://api.github.com/repos/deyaaelmasry1/Iptv/actions/workflows/update_posts.yml/dispatches`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `token ${cms.token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify({
+              ref: 'main'
+            })
+          }).catch(e => console.log('Rebuild trigger failed (normal for first posts)', e));
+        }
+      } catch (error) {
+        console.error('Post creation failed:', error);
+        statusMessage.textContent = `Error: ${error.message}`;
+        statusMessage.className = 'text-sm text-red-500';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  });
+  </script>
 </body>
 </html>
