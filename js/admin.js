@@ -1,3 +1,4 @@
+// In your admin.js or script tag
 document.addEventListener('DOMContentLoaded', () => {
   const postForm = document.getElementById('post-form');
   const submitBtn = document.getElementById('submit-btn');
@@ -11,33 +12,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const content = document.getElementById('post-content').value.trim();
     
     if (!title || !content) {
-      statusMessage.textContent = 'Please fill in all fields';
-      statusMessage.className = 'text-sm text-red-500';
+      showStatus('Please fill in all fields', 'red');
       return;
     }
 
     submitBtn.disabled = true;
-    statusMessage.textContent = 'Creating post...';
-    statusMessage.className = 'text-sm text-blue-500';
+    showStatus('Creating post...', 'blue');
 
     try {
+      console.log('Starting post creation...'); // Debug log
       const result = await cms.createPost(title, content);
       
-      if (result.content) {
-        statusMessage.textContent = 'Post created successfully!';
-        statusMessage.className = 'text-sm text-green-500';
-        postForm.reset();
+      if (result.success) {
+        showStatus('✓ Post created successfully!', 'green');
+        console.log('Post created at:', result.url); // Debug log
         
-        // Optional: Redirect to view the post
-        // const postUrl = result.content.path.replace('.md','.html');
-        // window.location.href = `/Iptv/post/${postUrl}`;
+        // Open GitHub repo in new tab to verify
+        window.open(result.url, '_blank');
+        
+        postForm.reset();
+      } else {
+        throw new Error('Unknown error occurred');
       }
     } catch (error) {
-      console.error('Post creation failed:', error);
-      statusMessage.textContent = `Error: ${error.message}`;
-      statusMessage.className = 'text-sm text-red-500';
+      console.error('Post creation error:', error); // Debug log
+      showStatus(`❌ ${error.message}`, 'red');
     } finally {
       submitBtn.disabled = false;
     }
   });
+
+  function showStatus(message, color) {
+    statusMessage.textContent = message;
+    statusMessage.className = `text-sm text-${color}-500`;
+  }
 });
