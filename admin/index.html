@@ -5,9 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
   <link href="/Iptv/css/tailwind.css" rel="stylesheet">
+  <style>
+    .success-message {
+      animation: fadeOut 5s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div class="container mx-auto px-4 py-8">
+    <!-- Success Message Container (initially hidden) -->
+    <div id="success-message" class="hidden fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg success-message">
+      Post created successfully! <span class="font-bold">✓</span>
+    </div>
+
     <div class="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
       <h1 class="text-2xl font-bold mb-6">Create New Post</h1>
       
@@ -24,7 +39,7 @@
         </div>
         
         <div class="flex items-center space-x-3">
-          <button type="submit" id="submit-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          <button type="submit" id="submit-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
             Publish Post
           </button>
           <div id="status-message" class="text-sm min-w-[200px]"></div>
@@ -39,12 +54,11 @@
     const postForm = document.getElementById('post-form');
     const submitBtn = document.getElementById('submit-btn');
     const statusMessage = document.getElementById('status-message');
+    const successMessage = document.getElementById('success-message');
     const cms = new GitHubCMS();
 
-    // Prevent default form submission
     postForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      e.stopPropagation();
       
       const title = document.getElementById('post-title').value.trim();
       const content = document.getElementById('post-content').value.trim();
@@ -59,20 +73,23 @@
 
       try {
         const result = await cms.createPost(title, content);
+        
         if (result && result.content) {
-          showStatus('✓ Post created successfully!', 'green');
-          postForm.reset();
+          // Show persistent status
+          showStatus('Post created! Updating index...', 'green');
           
-          // Optional: Show link to view post
-          const postUrl = result.content.path.replace('.md', '');
-          showStatus(`✓ Created! <a href="/Iptv/post/${postUrl}.html" class="underline">View post</a>`, 'green');
-          
-          // Refresh posts after delay
+          // Show floating success message
+          successMessage.classList.remove('hidden');
           setTimeout(() => {
-            showStatus('Updating posts list...', 'blue');
-          }, 2000);
-        } else {
-          throw new Error('Invalid response from GitHub');
+            successMessage.classList.add('hidden');
+          }, 5000);
+          
+          // Reset form but keep title for convenience
+          document.getElementById('post-content').value = '';
+          document.getElementById('post-title').focus();
+          
+          // Optional: Auto-scroll to show message
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       } catch (error) {
         console.error('Post creation failed:', error);
@@ -83,8 +100,8 @@
     });
 
     function showStatus(message, color) {
-      statusMessage.innerHTML = message;
-      statusMessage.className = `text-sm text-${color}-500`;
+      statusMessage.textContent = message;
+      statusMessage.className = `text-sm text-${color}-500 min-w-[200px]`;
     }
   });
   </script>
