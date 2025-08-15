@@ -12,19 +12,19 @@ class GitHubCMS {
       throw new Error('Authentication required. Please complete setup.');
     }
 
-    // Clean filename
+    // Generate filename with date and sanitized title
+    const dateStr = new Date().toISOString().split('T')[0];
     const cleanTitle = title.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
-    const filename = `posts/${new Date().toISOString().split('T')[0]}-${cleanTitle}.md`;
+    const filename = `posts/${dateStr}-${cleanTitle}.md`;
 
     try {
       const response = await fetch(`${this.baseUrl}/repos/${this.owner}/${this.repo}/contents/${filename}`, {
         method: 'PUT',
         headers: {
           'Authorization': `token ${this.token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
+          'Accept': 'application/vnd.github.v3+json'
         },
         body: JSON.stringify({
           message: `Add post: ${title}`,
@@ -37,13 +37,17 @@ class GitHubCMS {
         throw new Error(error.message || 'Failed to create post');
       }
 
-      // Return complete response including file path
       const result = await response.json();
+      
+      // Return enhanced response
       return {
+        success: true,
         content: {
           path: filename,
-          html_url: result.content.html_url
-        }
+          url: `${window.location.origin}/Iptv/post/${filename.replace('.md', '.html')}`,
+          githubUrl: result.content.html_url
+        },
+        message: 'Post created successfully'
       };
 
     } catch (error) {
