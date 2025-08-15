@@ -10,37 +10,27 @@ jobs:
   update-index:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Create posts directory
-      run: mkdir -p posts
+      - uses: actions/checkout@v4
       
-    - name: Generate index
-      run: |
-        echo "Creating posts index..."
-        files=$(find posts -name "*.md" | sort -r)
+      - name: Create posts directory if not exists
+        run: mkdir -p posts
         
-        if [ -z "$files" ]; then
-          echo "[]" > posts/index.json
-        else
-          echo "[" > posts/index.json
-          first=true
-          for f in $files; do
-            name=$(basename "$f")
-            if [ "$first" = true ]; then
-              first=false
-            else
-              echo "," >> posts/index.json
-            fi
-            echo "\"$name\"" >> posts/index.json
-          done
-          echo "]" >> posts/index.json
-        fi
-        
-    - name: Commit changes
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-        git add posts/index.json
-        git diff --cached --quiet || git commit -m "Update posts index"
-        git push
+      - name: Generate index.json
+        run: |
+          echo "Generating posts index..."
+          if [ -z "$(find posts -name '*.md')" ]; then
+            echo "[]" > posts/index.json
+            echo "No posts found - created empty index"
+          else
+            find posts -name "*.md" -printf '%f\n' | sort -r | jq -R . | jq -s . > posts/index.json
+            echo "Index created with $(jq length posts/index.json) posts"
+          fi
+          cat posts/index.json
+          
+      - name: Commit and push index
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add posts/index.json
+          git diff --cached --quiet || git commit -m "Update posts index"
+          git push
