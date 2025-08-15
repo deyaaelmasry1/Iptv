@@ -27,7 +27,7 @@
           <button type="submit" id="submit-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
             Publish Post
           </button>
-          <div id="status-message" class="text-sm"></div>
+          <div id="status-message" class="text-sm min-w-[200px]"></div>
         </div>
       </form>
     </div>
@@ -41,8 +41,11 @@
     const statusMessage = document.getElementById('status-message');
     const cms = new GitHubCMS();
 
+    // Prevent default form submission
     postForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      
       const title = document.getElementById('post-title').value.trim();
       const content = document.getElementById('post-content').value.trim();
       
@@ -56,24 +59,31 @@
 
       try {
         const result = await cms.createPost(title, content);
-        showStatus('✓ Post created successfully!', 'green');
-        postForm.reset();
-        
-        // Auto-refresh posts after 5 seconds
-        setTimeout(() => {
-          showStatus('Updating posts list...', 'blue');
-        }, 5000);
-        
+        if (result && result.content) {
+          showStatus('✓ Post created successfully!', 'green');
+          postForm.reset();
+          
+          // Optional: Show link to view post
+          const postUrl = result.content.path.replace('.md', '');
+          showStatus(`✓ Created! <a href="/Iptv/post/${postUrl}.html" class="underline">View post</a>`, 'green');
+          
+          // Refresh posts after delay
+          setTimeout(() => {
+            showStatus('Updating posts list...', 'blue');
+          }, 2000);
+        } else {
+          throw new Error('Invalid response from GitHub');
+        }
       } catch (error) {
-        showStatus(`Error: ${error.message}`, 'red');
         console.error('Post creation failed:', error);
+        showStatus(`Error: ${error.message}`, 'red');
       } finally {
         submitBtn.disabled = false;
       }
     });
 
     function showStatus(message, color) {
-      statusMessage.textContent = message;
+      statusMessage.innerHTML = message;
       statusMessage.className = `text-sm text-${color}-500`;
     }
   });
