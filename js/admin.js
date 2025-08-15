@@ -1,37 +1,43 @@
-document.addEventListener('DOMContentLoaded', async () => {
-  // Verify authentication
-  const config = JSON.parse(localStorage.getItem('github-cms-config'));
-  if (!config?.token) {
-    alert('Please complete setup first');
-    window.location.href = '/Iptv/setup.html';
-    return;
-  }
-
-  const cms = new GitHubCMS();
+document.addEventListener('DOMContentLoaded', () => {
   const postForm = document.getElementById('post-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const statusMessage = document.getElementById('status-message');
+  const cms = new GitHubCMS();
 
   postForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const title = document.getElementById('post-title').value;
-    const content = document.getElementById('post-content').value;
+    const title = document.getElementById('post-title').value.trim();
+    const content = document.getElementById('post-content').value.trim();
     
     if (!title || !content) {
-      alert('Please fill in all fields');
+      statusMessage.textContent = 'Please fill in all fields';
+      statusMessage.className = 'text-sm text-red-500';
       return;
     }
-    
+
+    submitBtn.disabled = true;
+    statusMessage.textContent = 'Creating post...';
+    statusMessage.className = 'text-sm text-blue-500';
+
     try {
       const result = await cms.createPost(title, content);
+      
       if (result.content) {
-        alert('Post created successfully!');
+        statusMessage.textContent = 'Post created successfully!';
+        statusMessage.className = 'text-sm text-green-500';
         postForm.reset();
-      } else {
-        throw new Error('Failed to create post');
+        
+        // Optional: Redirect to view the post
+        // const postUrl = result.content.path.replace('.md','.html');
+        // window.location.href = `/Iptv/post/${postUrl}`;
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert(`Error: ${error.message}`);
+      console.error('Post creation failed:', error);
+      statusMessage.textContent = `Error: ${error.message}`;
+      statusMessage.className = 'text-sm text-red-500';
+    } finally {
+      submitBtn.disabled = false;
     }
   });
 });
