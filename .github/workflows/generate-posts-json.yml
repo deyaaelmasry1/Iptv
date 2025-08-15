@@ -5,37 +5,49 @@ on:
     paths:
       - 'posts/*.md'
       - 'posts/*.markdown'
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   update-index:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4  # Updated to latest version
-    
-    - name: Generate index
-      run: |
-        # Create directory if it doesn't exist
-        mkdir -p posts
-        
-        # Generate JSON array of posts
-        echo "[" > posts/index.json
-        if ls -1 posts/*.md posts/*.markdown 2>/dev/null; then
-          ls -1 posts/*.md posts/*.markdown 2>/dev/null | \
-            sed 's/posts\///' | \
-            awk 'NR>1 {printf ","} {printf "\"%s\"", $0}' >> posts/index.json
-        fi
-        echo "]" >> posts/index.json
-        
-        # Verify the generated file
-        echo "Generated index:"
-        cat posts/index.json
-        
-    - name: Commit changes
-      if: success()
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-        git add posts/index.json
-        git diff-index --quiet HEAD || git commit -m "Update posts index"
-        git push
+      - uses: actions/checkout@v4
+
+      - name: Generate posts index JSON
+        run: |
+          mkdir -p posts
+          
+          # Find markdown files, sort newest first, and build JSON
+          files=$(find posts -maxdepth 1 -type f \( -name "*.md" -o -name "*.markdown" \) -printf "%f\n" | sort -r)
+          
+          # If no files, output empty array
+          if [ -z "$files" ]; then
+            echo "[]" > posts/index.json
+          else
+            printf "[\n" > posts/index.json
+            first=true
+            while IFS= read -r file; do
+              if [ "$first" = true ]; then
+                first=false
+              else
+                printf ",\n" >> posts/index.json
+              fi
+              printf "  \"%s\"" "$file" >> posts/index.json
+            done <<< "$files"
+            printf "\n]\n" >> posts/index.json
+          fi
+          
+          echo "Generated index.json:"
+          cat posts/index.json
+
+      - name: Commit & push if changed
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add posts/index.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update posts index"
+            git push
+          else
+            echo "No changes to commit."
+          fi
