@@ -1,10 +1,17 @@
 class GitHubCMS {
   constructor() {
     const config = JSON.parse(localStorage.getItem('github-cms-config')) || {};
-    this.repo = 'Iptv';
-    this.owner = 'deyaaelmasry1';
+    this.repo = 'Iptv'; // اسم المستودع
+    this.owner = 'deyaaelmasry1'; // اسم المستخدم
     this.token = config.token;
     this.baseUrl = 'https://api.github.com';
+  }
+
+  encodeBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary);
   }
 
   async createPost(title, content) {
@@ -21,7 +28,6 @@ class GitHubCMS {
       .replace(/(^-|-$)/g, '');
     const filename = `posts/${date}-${cleanTitle}.md`;
 
-    // Step 1: Create the post
     const createResponse = await fetch(
       `${this.baseUrl}/repos/${this.owner}/${this.repo}/contents/${filename}`,
       {
@@ -33,7 +39,7 @@ class GitHubCMS {
         },
         body: JSON.stringify({
           message: `Add post: ${title}`,
-          content: btoa(unescape(encodeURIComponent(content)))
+          content: this.encodeBase64(content)
         })
       }
     );
@@ -43,7 +49,7 @@ class GitHubCMS {
       throw new Error(error.message || 'Failed to create post file');
     }
 
-    // Step 2: Trigger index update
+    // Trigger workflow (optional)
     await fetch(
       `${this.baseUrl}/repos/${this.owner}/${this.repo}/actions/workflows/update_posts.yml/dispatches`,
       {
@@ -54,20 +60,12 @@ class GitHubCMS {
         },
         body: JSON.stringify({ ref: 'main' })
       }
-    ).catch(() => console.warn('Index update workflow may not exist yet'));
+    ).catch(() => console.warn('Workflow trigger failed'));
 
     return {
       success: true,
       filename,
-      url: `https://github.com/${this.owner}/${this.repo}/blob/main/${filename}`
+      url: `https://${this.owner}.github.io/${this.repo}/${filename}`
     };
-  }
-
-  async getPosts() {
-    const response = await fetch(
-      `https://raw.githubusercontent.com/${this.owner}/${this.repo}/main/posts/index.json?t=${Date.now()}`
-    );
-    if (!response.ok) throw new Error('Failed to load index.json');
-    return await response.json();
   }
 }
