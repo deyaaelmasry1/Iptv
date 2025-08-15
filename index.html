@@ -1,45 +1,80 @@
-<div id="posts-container">
-  <!-- Loading state will be replaced -->
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const cms = new GitHubCMS();
-  const container = document.getElementById('posts-container');
-  
-  try {
-    container.innerHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Blog</title>
+  <link href="/Iptv/css/tailwind.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <h1 class="text-3xl font-bold mb-8">Latest Posts</h1>
+    <div id="posts-container">
       <div class="text-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto"></div>
         <p class="mt-2 text-gray-500">Loading posts...</p>
       </div>
-    `;
-    
-    const posts = await cms.getPosts();
-    
-    if (!posts || posts.length === 0) {
+    </div>
+  </div>
+
+  <script src="/Iptv/js/marked.js"></script>
+  <script src="/Iptv/js/github-api.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const cms = new GitHubCMS();
+    const container = document.getElementById('posts-container');
+
+    try {
+      const posts = await cms.getPosts();
+      
+      if (!posts || posts.length === 0) {
+        container.innerHTML = `
+          <div class="bg-yellow-50 p-4 rounded-lg text-center">
+            <p>No posts yet. <a href="/Iptv/admin/" class="text-blue-600 hover:underline">Create your first post</a></p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      for (const postFilename of posts) {
+        try {
+          const response = await fetch(
+            `https://raw.githubusercontent.com/deyaaelmasry1/Iptv/main/posts/${postFilename}?t=${Date.now()}`
+          );
+          const content = await response.text();
+          
+          const postEl = document.createElement('article');
+          postEl.className = 'mb-8 bg-white p-6 rounded-lg shadow';
+          postEl.innerHTML = `
+            <h2 class="text-xl font-bold mb-2">
+              ${postFilename.replace(/^\d{4}-\d{2}-\d{2}-|\.md$/g, '').replace(/-/g, ' ')}
+            </h2>
+            <div class="prose max-w-none">${marked.parse(content.substring(0, 200) + '...')}</div>
+            <a href="/Iptv/post/${postFilename.replace('.md', '')}.html" 
+               class="inline-block mt-4 text-blue-600 hover:underline">
+              Read more →
+            </a>
+          `;
+          container.appendChild(postEl);
+        } catch (e) {
+          console.error(`Failed to load post ${postFilename}:`, e);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to load posts:', error);
       container.innerHTML = `
-        <div class="bg-yellow-50 p-4 rounded-lg text-center">
-          <p>No posts yet. <a href="/Iptv/admin/" class="text-blue-600 hover:underline">Create your first post</a></p>
-          <button onclick="location.reload()" class="mt-2 px-3 py-1 bg-gray-100 rounded">
-            ↻ Refresh
+        <div class="bg-red-50 p-4 rounded-lg">
+          <p class="text-red-600">Error loading posts. Please try again later.</p>
+          <button onclick="window.location.reload()" class="mt-2 px-3 py-1 bg-gray-100 rounded">
+            ↻ Reload
           </button>
         </div>
       `;
-      return;
     }
-    
-    // Render posts here...
-    
-  } catch (error) {
-    container.innerHTML = `
-      <div class="bg-red-50 p-4 rounded-lg">
-        <p class="text-red-600">Error loading posts. Please try again later.</p>
-        <button onclick="location.reload()" class="mt-2 px-3 py-1 bg-gray-100 rounded">
-          ↻ Refresh
-        </button>
-      </div>
-    `;
-  }
-});
-</script>
+  });
+  </script>
+</body>
+</html>
