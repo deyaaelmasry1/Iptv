@@ -1,12 +1,170 @@
 <main class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold mb-8 text-center md:text-left">Latest Posts</h1>
-  
-  <div id="posts-list" class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-    <!-- Posts will be inserted here -->
-  </div>
-  
-  <div id="loading" class="text-center py-12">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto"></div>
-    <p class="mt-2 text-gray-500">Loading posts...</p>
-  </div>
+  <!-- Hero Section -->
+  <section class="mb-12 text-center">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-800 dark:text-white">Welcome to My Blog</h1>
+    <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+      Discover the latest articles, tutorials, and insights on technology and web development.
+    </p>
+  </section>
+
+  <!-- Featured Post (Optional) -->
+  <section id="featured-post" class="mb-12 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 rounded-xl overflow-hidden shadow-lg">
+    <!-- Featured content will be inserted here -->
+  </section>
+
+  <!-- Posts Section -->
+  <section>
+    <div class="flex justify-between items-center mb-8">
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Latest Posts</h2>
+      <a href="/archive" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center">
+        View Archive
+        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </a>
+    </div>
+
+    <!-- Posts Grid -->
+    <div id="posts-list" class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <!-- Posts will be inserted here by JavaScript -->
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="text-center py-12">
+      <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+      <p class="mt-4 text-gray-500 dark:text-gray-400">Loading posts...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden text-center py-12">
+      <div class="bg-yellow-50 dark:bg-gray-700 inline-block p-4 rounded-full mb-4">
+        <svg class="w-12 h-12 text-yellow-400 dark:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-medium text-gray-800 dark:text-white mb-2">No Posts Found</h3>
+      <p class="text-gray-600 dark:text-gray-300 mb-6">We couldn't find any posts to display.</p>
+      <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Create Your First Post
+      </a>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="hidden text-center py-12">
+      <div class="bg-red-50 dark:bg-gray-700 inline-block p-4 rounded-full mb-4">
+        <svg class="w-12 h-12 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-medium text-gray-800 dark:text-white mb-2">Error Loading Posts</h3>
+      <p class="text-gray-600 dark:text-gray-300 mb-6" id="error-message">We encountered an issue loading the posts.</p>
+      <button onclick="window.location.reload()" class="inline-flex items-center px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Try Again
+      </button>
+    </div>
+
+    <!-- Pagination (Optional) -->
+    <div id="pagination" class="hidden mt-12 flex justify-center">
+      <nav class="inline-flex rounded-md shadow">
+        <a href="#" class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Previous</a>
+        <a href="#" class="px-3 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700">1</a>
+        <a href="#" class="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">2</a>
+        <a href="#" class="px-3 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">3</a>
+        <a href="#" class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Next</a>
+      </nav>
+    </div>
+  </section>
 </main>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const postsList = document.getElementById('posts-list');
+    const loading = document.getElementById('loading');
+    const emptyState = document.getElementById('empty-state');
+    const errorState = document.getElementById('error-state');
+    const errorMessage = document.getElementById('error-message');
+
+    try {
+      // Show loading state
+      loading.classList.remove('hidden');
+      postsList.innerHTML = '';
+      
+      // Fetch posts (replace with your actual API call)
+      const response = await fetch('/posts/index.json');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const posts = await response.json();
+      
+      // Hide loading state
+      loading.classList.add('hidden');
+      
+      // Handle empty state
+      if (!posts || posts.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      
+      // Render posts
+      posts.forEach(post => {
+        const postDate = extractDateFromSlug(post);
+        const postTitle = formatPostTitle(post);
+        
+        const postElement = document.createElement('article');
+        postElement.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden';
+        postElement.innerHTML = `
+          <a href="/Iptv/post/${post.replace('.md', '')}.html">
+            <div class="h-48 bg-gray-200 dark:bg-gray-700"></div>
+            <div class="p-6">
+              <span class="text-sm text-gray-500 dark:text-gray-400">${postDate}</span>
+              <h3 class="text-xl font-bold mt-2 mb-3 text-gray-800 dark:text-white">${postTitle}</h3>
+              <p class="text-gray-600 dark:text-gray-300 line-clamp-2">Post excerpt would go here...</p>
+              <div class="mt-4 flex items-center text-blue-600 dark:text-blue-400">
+                <span>Read more</span>
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+              </div>
+            </div>
+          </a>
+        `;
+        postsList.appendChild(postElement);
+      });
+      
+    } catch (error) {
+      console.error('Failed to load posts:', error);
+      loading.classList.add('hidden');
+      errorMessage.textContent = error.message || 'Failed to load posts. Please check your connection.';
+      errorState.classList.remove('hidden');
+    }
+  });
+
+  function extractDateFromSlug(filename) {
+    const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (dateMatch) {
+      try {
+        return new Date(dateMatch[1]).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch {
+        return dateMatch[1];
+      }
+    }
+    return '';
+  }
+
+  function formatPostTitle(filename) {
+    return filename
+      .replace('.md', '')
+      .replace(/^\d{4}-\d{2}-\d{2}-/, '')
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+</script>
