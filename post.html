@@ -43,10 +43,12 @@
       const cms = new GitHubCMS();
       const container = document.getElementById('post-container');
       
-      // Extract slug from URL exactly as you specified
-      const postSlug = window.location.pathname.split('/').pop().replace('.html', '');
+      // Extract slug from URL like /post/2025-08-16-title.html
+      const slug = window.location.pathname
+        .split('/post/')[1]
+        ?.replace('.html', '');
       
-      if (!postSlug) {
+      if (!slug) {
         container.innerHTML = `
           <div class="bg-red-50 p-6 rounded-lg">
             <p class="text-red-600">Invalid post URL</p>
@@ -57,15 +59,13 @@
       }
 
       try {
-        // Build the raw GitHub URL exactly as you specified
-        const postUrl = `https://raw.githubusercontent.com/${cms.owner}/${cms.repo}/main/posts/${postSlug}.md`;
-        
-        const response = await fetch(postUrl);
+        // Fetch from GitHub Pages
+        const response = await fetch(`/posts/${slug}.md?nocache=${Date.now()}`);
         
         if (!response.ok) throw new Error('Post not found');
         
         const markdown = await response.text();
-        const title = postSlug
+        const title = slug
           .replace(/^\d{4}-\d{2}-\d{2}-/, '')
           .replace(/-/g, ' ')
           .replace(/\b\w/g, c => c.toUpperCase());
@@ -78,46 +78,60 @@
               <h1 class="text-3xl md:text-4xl font-bold mb-4">${title}</h1>
               <div class="flex items-center text-gray-500 mb-6">
                 <i class="far fa-calendar mr-2"></i>
-                ${postSlug.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || ''}
+                ${slug.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || ''}
               </div>
               <div class="prose max-w-none" id="post-content"></div>
             </div>
           </article>
         `;
         
-        // Configure marked to handle relative links correctly
+        // Configure marked to handle file links correctly
         marked.use({
-          baseUrl: `/post/${postSlug}/`, // Base for relative links
           renderer: {
             link(href, title, text) {
-              // Handle relative file paths
-              if (href.startsWith('./') || href.startsWith('../')) {
-                // Resolve relative to post URL
-                const resolvedUrl = new URL(href, `https://example.com/post/${postSlug}/`).pathname;
-                return `<a href="${resolvedUrl}"${title ? ` title="${title}"` : ''}>${text}</a>`;
+              // Handle relative file paths by making them absolute to the /posts/ directory
+              if (href.startsWith('./') || href.startsWith('../') || !/^https?:\/\//.test(href)) {
+                // Resolve relative paths
+                const basePath = `/posts/${slug.split('/').slice(0, -1).join('/')}`;
+                const resolvedHref = new URL(href, `https://example.com${basePath}/`).pathname;
+                return `<a href="${resolvedHref}"${title ? ` title="${title}"` : ''}>${text}</a>`;
               }
-              // Handle absolute paths to /posts/ directory
-              if (href.startsWith('/posts/')) {
-                // Convert to post view URL
-                const postPath = href.replace('/posts/', '').replace('.md', '');
-                return `<a href="/post/${postPath}.html"${title ? ` title="${title}"` : ''}>${text}</a>`;
-              }
-              // Default behavior for other URLs
-              return `<a href="${href}"${title ? ` title="${title}"` : ''}${!href.startsWith('#') ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`;
+              // Default behavior for absolute URLs
+              return `<a href="${href}"${title ? ` title="${title}"` : ''}>${text}</a>`;
             },
             image(src, title, alt) {
               // Handle relative image paths
-              if (src.startsWith('./') || src.startsWith('../')) {
-                const resolvedSrc = new URL(src, `https://raw.githubusercontent.com/${cms.owner}/${cms.repo}/main/posts/${postSlug}/`).href;
+              if (src.startsWith('./') || src.startsWith('../') || !/^https?:\/\//.test(src)) {
+                // Resolve relative paths for images
+                const basePath = `/posts/${slug.split('/').slice(0, -1).join('/')}`;
+                const resolvedSrc = new URL(src, `https://example.com${basePath}/`).pathname;
                 return `<img src="${resolvedSrc}" alt="${alt || ''}"${title ? ` title="${title}"` : ''} class="my-4 rounded-lg">`;
               }
-              // Default behavior
+              // Default behavior for absolute URLs
               return `<img src="${src}" alt="${alt || ''}"${title ? ` title="${title}"` : ''} class="my-4 rounded-lg">`;
             }
           }
         });
         
         document.getElementById('post-content').innerHTML = marked.parse(markdown);
+        
+        // Add click handlers for file links to handle them properly
+        document.querySelectorAll('#post-content a').forEach(link => {
+          const href = link.getAttribute('href');
+          if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              // Handle file links - you might want to customize this based on your needs
+              if (href.match(/\.(pdf|docx?|xlsx?|pptx?|jpg|jpeg|png|gif)$/i)) {
+                // For file downloads, open in new tab
+                window.open(href, '_blank');
+              } else {
+                // For other relative links, navigate to them
+                window.location.href = href;
+              }
+            });
+          }
+        });
         
       } catch (error) {
         container.innerHTML = `
