@@ -20,7 +20,7 @@
     </div>
 
     <div id="posts-container" class="space-y-6">
-      <div class="text-center py-12">
+      <div id="loading" class="text-center py-12">
         <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
         <p class="mt-4 text-gray-500">Loading posts...</p>
       </div>
@@ -38,33 +38,25 @@
       const theme = new ThemeManager();
       const cms = new GitHubCMS();
       
-      try {
-        // Load theme templates
-        await theme.init();
-        theme.applyTemplate('header', 'header-container');
-        theme.applyTemplate('footer', 'footer-container');
+      // Pagination variables
+      let currentPage = 1;
+      const postsPerPage = 10;
+      let allPosts = [];
 
-        // Load posts
-        const posts = await cms.getPosts();
+      // Load theme templates
+      await theme.init();
+      theme.applyTemplate('header', 'header-container');
+      theme.applyTemplate('footer', 'footer-container');
+
+      function displayPosts(posts, page) {
+        const startIndex = (page - 1) * postsPerPage;
+        const endIndex = startIndex + postsPerPage;
+        const paginatedPosts = posts.slice(startIndex, endIndex);
+
         const postsContainer = document.getElementById('posts-container');
-        
-        if (!posts.length) {
-          postsContainer.innerHTML = `
-            <div class="bg-yellow-50 p-6 rounded-lg text-center">
-              <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
-              <p class="text-lg mb-4">No posts found</p>
-              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <i class="fas fa-plus mr-2"></i> Create First Post
-              </a>
-            </div>
-          `;
-          return;
-        }
-
-        // Render posts
-        postsContainer.innerHTML = posts.map(post => `
+        postsContainer.innerHTML = paginatedPosts.map(post => `
           <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <a href="/post/${post.slug}.html" class="block p-6">
+            <a href="/posts/${post.slug}.html" class="block p-6">
               <div class="flex items-center text-sm text-gray-500 mb-2">
                 <i class="far fa-calendar mr-2"></i>
                 ${post.date ? new Date(post.date).toLocaleDateString() : ''}
@@ -78,9 +70,89 @@
             </a>
           </article>
         `).join('');
+      }
+
+      function setupPagination(posts, container, postsPerPage) {
+        container.innerHTML = '';
+        const pageCount = Math.ceil(posts.length / postsPerPage);
+
+        if (pageCount <= 1) return;
+
+        // Previous button
+        const prevButton = document.createElement('button');
+        prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevButton.className = 'px-3 py-1 mx-1 rounded border border-gray-300 hover:bg-gray-100';
+        prevButton.disabled = currentPage === 1;
+        prevButton.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            displayPosts(posts, currentPage);
+            setupPagination(posts, container, postsPerPage);
+          }
+        });
+        container.appendChild(prevButton);
+
+        // Page numbers
+        for (let i = 1; i <= pageCount; i++) {
+          const pageButton = document.createElement('button');
+          pageButton.textContent = i;
+          pageButton.className = `px-3 py-1 mx-1 rounded border ${currentPage === i ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-300 hover:bg-gray-100'}`;
+          pageButton.addEventListener('click', () => {
+            currentPage = i;
+            displayPosts(posts, currentPage);
+            setupPagination(posts, container, postsPerPage);
+          });
+          container.appendChild(pageButton);
+        }
+
+        // Next button
+        const nextButton = document.createElement('button');
+        nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextButton.className = 'px-3 py-1 mx-1 rounded border border-gray-300 hover:bg-gray-100';
+        nextButton.disabled = currentPage === pageCount;
+        nextButton.addEventListener('click', () => {
+          if (currentPage < pageCount) {
+            currentPage++;
+            displayPosts(posts, currentPage);
+            setupPagination(posts, container, postsPerPage);
+          }
+        });
+        container.appendChild(nextButton);
+      }
+
+      try {
+        // Load posts
+        allPosts = await cms.getPosts();
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) loadingElement.remove();
+
+        if (!allPosts.length) {
+          document.getElementById('posts-container').innerHTML = `
+            <div class="bg-yellow-50 p-6 rounded-lg text-center">
+              <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
+              <p class="text-lg mb-4">No posts found</p>
+              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <i class="fas fa-plus mr-2"></i> Create First Post
+              </a>
+            </div>
+          `;
+          return;
+        }
+
+        // Sort posts by date (newest first)
+        allPosts.sort((a, b) => {
+          const dateA = a.date || a.slug.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
+          const dateB = b.date || b.slug.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
+          return new Date(dateB) - new Date(dateA);
+        });
+
+        displayPosts(allPosts, currentPage);
+        setupPagination(allPosts, document.getElementById('pagination-container'), postsPerPage);
 
       } catch (error) {
-        console.error('Failed to load page:', error);
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) loadingElement.remove();
+        
         document.getElementById('posts-container').innerHTML = `
           <div class="bg-red-50 p-6 rounded-lg text-center">
             <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
