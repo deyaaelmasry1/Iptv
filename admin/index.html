@@ -69,16 +69,14 @@
           document.getElementById('post-content').value
         );
         
-        // Clean up the URL to ensure single 'posts' in path
-        let viewUrl = result.url;
-        // Remove any duplicate 'posts' segments
-        viewUrl = viewUrl.replace(/(\/?posts\/)+/g, 'posts/');
-        // Ensure it starts with single 'posts/'
-        viewUrl = viewUrl.replace(/^\//, '').replace(/^posts\//, 'posts/');
+        // Remove Iptv/post from the URL completely
+        const viewUrl = result.url.replace(/^\/?Iptv\/post\//, '');
+        // Ensure it starts with posts/ and has proper extension
+        const cleanUrl = `posts/${viewUrl.split('/').pop().replace('.md', '.html')}`;
         
         statusEl.innerHTML = `
           <div class="bg-green-100 text-green-800 p-3 rounded">
-            Post created! <a href="/${viewUrl}" class="text-blue-600 underline">View post</a>
+            Post created! <a href="/${cleanUrl}" class="text-blue-600 underline">View post</a>
             or <a href="${result.editUrl}" target="_blank" class="text-blue-600 underline">edit on GitHub</a>
           </div>
         `;
