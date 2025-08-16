@@ -39,7 +39,7 @@
       const cms = new GitHubCMS();
       
       try {
-        // Load theme
+        // Load theme templates
         await theme.init();
         theme.applyTemplate('header', 'header-container');
         theme.applyTemplate('footer', 'footer-container');
@@ -59,8 +59,32 @@
         // Set page title
         document.title = `${post.title} | My Blog`;
 
-        // Render post
-        await theme.renderPost(post, 'post-container');
+        // Render post content
+        const postContainer = document.getElementById('post-container');
+        postContainer.innerHTML = `
+          <article class="bg-white rounded-lg shadow-md p-6">
+            ${post.date ? `
+              <div class="flex items-center text-sm text-gray-500 mb-4">
+                <i class="far fa-calendar mr-2"></i>
+                <time datetime="${post.date}">${new Date(post.date).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}</time>
+              </div>
+            ` : ''}
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">${post.title}</h1>
+            <div class="prose max-w-none">
+              ${marked.parse(post.content || '')}
+            </div>
+          </article>
+        `;
+
+        // Sanitize the rendered markdown
+        const postContent = postContainer.querySelector('.prose');
+        if (postContent) {
+          postContent.innerHTML = DOMPurify.sanitize(postContent.innerHTML);
+        }
 
       } catch (error) {
         console.error('Failed to load post:', error);
