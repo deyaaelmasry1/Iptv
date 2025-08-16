@@ -69,14 +69,17 @@
           document.getElementById('post-content').value
         );
         
-        // Modify the URLs to remove /Iptv/post/ path
-        const viewUrl = result.url.replace('/Iptv/post/', '/posts/');
-        const editUrl = result.editUrl;
+        // Clean up the URL to ensure single 'posts' in path
+        let viewUrl = result.url;
+        // Remove any duplicate 'posts' segments
+        viewUrl = viewUrl.replace(/(\/?posts\/)+/g, 'posts/');
+        // Ensure it starts with single 'posts/'
+        viewUrl = viewUrl.replace(/^\//, '').replace(/^posts\//, 'posts/');
         
         statusEl.innerHTML = `
           <div class="bg-green-100 text-green-800 p-3 rounded">
-            Post created! <a href="${viewUrl}" class="text-blue-600 underline">View post</a>
-            or <a href="${editUrl}" target="_blank" class="text-blue-600 underline">edit on GitHub</a>
+            Post created! <a href="/${viewUrl}" class="text-blue-600 underline">View post</a>
+            or <a href="${result.editUrl}" target="_blank" class="text-blue-600 underline">edit on GitHub</a>
           </div>
         `;
         e.target.reset();
