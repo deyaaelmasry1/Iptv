@@ -4,175 +4,76 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Post View</title>
-  <!-- Load theme CSS first -->
   <link rel="stylesheet" href="/themes/default/style.css">
-  <!-- Then load Tailwind -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <!-- Load DOMPurify for XSS protection -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
-  <!-- Header injection point -->
-  <header id="header-container" role="banner"></header>
+  <div id="header-container"></div>
 
-  <main class="container mx-auto px-4 py-8 max-w-4xl" id="main-content" role="main">
+  <main class="container mx-auto px-4 py-8 max-w-4xl">
     <div class="mb-6">
-      <a href="/" class="inline-flex items-center text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
-        <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i> 
+      <a href="/" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-2"></i> 
         <span>Back to all posts</span>
       </a>
     </div>
 
-    <div id="post-container" aria-live="polite">
-      <!-- Loading state -->
-      <div class="text-center py-12" role="status">
-        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto" aria-hidden="true"></div>
+    <div id="post-container">
+      <div class="text-center py-12">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
         <p class="mt-4 text-gray-500">Loading post content...</p>
       </div>
     </div>
   </main>
 
-  <!-- Footer injection point -->
-  <footer id="footer-container" role="contentinfo"></footer>
+  <div id="footer-container"></div>
 
-  <!-- Scripts must load in this exact order -->
   <script src="/js/theme-manager.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/js/github-api.js"></script>
   <script>
-    // Configuration
-    const config = {
-      defaultLocale: 'en-US',
-      dateOptions: {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }
-    };
+    document.addEventListener('DOMContentLoaded', async () => {
+      const theme = new ThemeManager();
+      const cms = new GitHubCMS();
+      
+      try {
+        // Load theme
+        await theme.init();
+        theme.applyTemplate('header', 'header-container');
+        theme.applyTemplate('footer', 'footer-container');
 
-    // Post rendering utilities
-    const PostRenderer = {
-      /**
-       * Sanitizes and renders markdown content
-       * @param {string} markdown 
-       * @returns {string} Sanitized HTML
-       */
-      renderMarkdown: function(markdown) {
-        const unsafeHtml = marked.parse(markdown);
-        return DOMPurify.sanitize(unsafeHtml);
-      },
+        // Get post slug from URL
+        const slug = window.location.pathname
+          .split('/')
+          .pop()
+          .replace('.html', '');
 
-      /**
-       * Extracts title from markdown or filename
-       * @param {string} markdown 
-       * @param {string} slug 
-       * @returns {string} Post title
-       */
-      extractTitle: function(markdown, slug) {
-        const titleMatch = markdown.match(/^#\s+(.+)$/m);
-        return titleMatch ? titleMatch[1] : 
-          slug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
-             .replace(/-/g, ' ')
-             .replace(/\b\w/g, c => c.toUpperCase());
-      },
-
-      /**
-       * Formats date from slug
-       * @param {string} slug 
-       * @param {string} locale 
-       * @returns {string} Formatted date
-       */
-      formatDate: function(slug, locale = config.defaultLocale) {
-        const postDate = slug.match(/^(\d{4}-\d{2}-\d{2})/)?.[0];
-        if (!postDate) return '';
+        // Load post data
+        const posts = await cms.getPosts();
+        const post = posts.find(p => p.slug === slug);
         
-        return new Date(postDate).toLocaleDateString(
-          locale, 
-          config.dateOptions
-        );
-      },
+        if (!post) throw new Error('Post not found');
 
-      /**
-       * Creates error display
-       * @param {Error} error 
-       * @returns {string} HTML error message
-       */
-      createErrorDisplay: function(error) {
-        return `
-          <div class="bg-red-50 p-6 rounded-lg text-center" role="alert">
-            <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4" aria-hidden="true"></i>
+        // Set page title
+        document.title = `${post.title} | My Blog`;
+
+        // Render post
+        await theme.renderPost(post, 'post-container');
+
+      } catch (error) {
+        console.error('Failed to load post:', error);
+        document.getElementById('post-container').innerHTML = `
+          <div class="bg-red-50 p-6 rounded-lg text-center">
+            <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
             <h3 class="text-xl font-bold mb-2">Error Loading Post</h3>
             <p class="mb-4">${error.message || 'Unknown error'}</p>
-            <a href="/" class="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <a href="/" class="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               Return Home
             </a>
           </div>
         `;
-      }
-    };
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        // 1. First load theme
-        const theme = new ThemeManager();
-        await theme.loadTemplates();
-        
-        // 2. Apply header/footer
-        theme.applyTemplate('header', 'header-container');
-        theme.applyTemplate('footer', 'footer-container');
-        
-        // 3. Get post slug from URL
-        const pathParts = window.location.pathname.split('/');
-        const postSlug = pathParts[pathParts.length - 1].replace('.html', '');
-        
-        // 4. Try to load post template from theme first
-        if (theme.hasTemplate('post')) {
-          await theme.renderPost(postSlug, 'post-container');
-          return;
-        }
-        
-        // 5. Fallback to default rendering if no theme post template
-        const response = await fetch(`/posts/${postSlug}.md?nocache=${Date.now()}`);
-        if (!response.ok) throw new Error('Post not found');
-        
-        const markdown = await response.text();
-        const title = PostRenderer.extractTitle(markdown, postSlug);
-        const formattedDate = PostRenderer.formatDate(postSlug);
-        
-        // Update page
-        document.title = `${title} | My Blog`;
-        
-        // Create post structure
-        document.getElementById('post-container').innerHTML = `
-          <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow" aria-labelledby="post-title">
-            <div class="p-6">
-              ${formattedDate ? `
-                <div class="flex items-center text-sm text-gray-500 mb-2">
-                  <i class="far fa-calendar mr-2" aria-hidden="true"></i>
-                  <time datetime="${postSlug.substring(0, 10)}">${formattedDate}</time>
-                </div>
-              ` : ''}
-              <h1 id="post-title" class="text-2xl font-bold text-gray-800 mb-6">${title}</h1>
-              <div class="prose max-w-none" id="post-content"></div>
-            </div>
-          </article>
-        `;
-        
-        // Render markdown (excluding the first H1 if it exists)
-        const content = title.match(/^#\s+.+\n/) ? 
-          markdown.replace(/^#\s+.+\n/, '') : markdown;
-        
-        document.getElementById('post-content').innerHTML = 
-          PostRenderer.renderMarkdown(content);
-          
-        // Set focus to main content for screen readers
-        document.getElementById('main-content').setAttribute('tabindex', '-1');
-        document.getElementById('main-content').focus();
-          
-      } catch (error) {
-        console.error("Post loading error:", error);
-        document.getElementById('post-container').innerHTML = 
-          PostRenderer.createErrorDisplay(error);
       }
     });
   </script>
