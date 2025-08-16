@@ -3,6 +3,7 @@
 <head>
   <title>Admin - Create Post</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-gray-100 min-h-screen p-8">
   <div class="max-w-3xl mx-auto bg-white rounded-lg shadow p-6">
@@ -23,13 +24,30 @@
       </div>
       
       <div>
+        <label class="block font-medium">Slug (URL identifier)</label>
+        <div class="flex items-center">
+          <span class="bg-gray-200 p-2 rounded-l">posts/</span>
+          <input type="text" id="post-slug" required 
+                 class="flex-1 border p-2 rounded-r" 
+                 placeholder="yyyy-mm-dd-your-post-title">
+          <span class="bg-gray-200 p-2 rounded-r">.html</span>
+        </div>
+        <p class="text-sm text-gray-500 mt-1">Example: 2025-08-16-my-new-post</p>
+      </div>
+      
+      <div>
         <label class="block font-medium">Content (Markdown)</label>
         <textarea id="post-content" rows="12" required class="w-full border p-2 rounded font-mono"></textarea>
       </div>
       
-      <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
-        Publish Post
-      </button>
+      <div class="flex items-center space-x-4">
+        <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 flex items-center">
+          <i class="fas fa-paper-plane mr-2"></i> Publish Post
+        </button>
+        <button type="button" onclick="generateSlug()" class="text-blue-600 hover:underline flex items-center">
+          <i class="fas fa-magic mr-2"></i> Generate Slug
+        </button>
+      </div>
     </form>
     
     <div id="status" class="mt-4 hidden"></div>
@@ -54,6 +72,36 @@
       location.reload();
     }
 
+    function generateSlug() {
+      const title = document.getElementById('post-title').value;
+      if (!title) return;
+      
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
+      
+      // Convert title to slug-friendly format
+      let slug = title.toLowerCase()
+        .replace(/[^\w\s-]/g, '') // Remove non-word chars
+        .replace(/\s+/g, '-')    // Replace spaces with -
+        .replace(/--+/g, '-');    // Replace multiple - with single -
+      
+      document.getElementById('post-slug').value = `${dateStr}-${slug}`;
+    }
+
+    function formatPostUrl(slug) {
+      // Ensure the slug starts with a date (add current date if not)
+      if (!/^\d{4}-\d{2}-\d{2}/.test(slug)) {
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        slug = `${dateStr}-${slug}`;
+      }
+      
+      // Remove any existing .html if present
+      slug = slug.replace(/\.html$/, '');
+      
+      return `/posts/${slug}.html`;
+    }
+
     document.getElementById('post-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
@@ -64,28 +112,47 @@
       statusEl.innerHTML = '<div class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div> Publishing...</div>';
 
       try {
-        const result = await cms.createPost(
-          document.getElementById('post-title').value,
-          document.getElementById('post-content').value
-        );
+        const title = document.getElementById('post-title').value;
+        const slug = document.getElementById('post-slug').value;
+        const content = document.getElementById('post-content').value;
+        
+        const result = await cms.createPost(title, content, slug);
+        
+        const postUrl = formatPostUrl(slug);
         
         statusEl.innerHTML = `
           <div class="bg-green-100 text-green-800 p-3 rounded">
-            Post created! <a href="${result.url}" class="text-blue-600 underline">View post</a>
-            or <a href="${result.editUrl}" target="_blank" class="text-blue-600 underline">edit on GitHub</a>
+            <div class="flex items-center mb-2">
+              <i class="fas fa-check-circle text-green-500 mr-2"></i>
+              <span>Post created successfully!</span>
+            </div>
+            <div class="ml-6 space-y-1">
+              <div><a href="${postUrl}" class="text-blue-600 underline hover:text-blue-800">
+                <i class="fas fa-external-link-alt mr-1"></i> View post
+              </a></div>
+              <div><a href="${result.editUrl}" target="_blank" class="text-blue-600 underline hover:text-blue-800">
+                <i class="fab fa-github mr-1"></i> Edit on GitHub
+              </a></div>
+            </div>
           </div>
         `;
         e.target.reset();
       } catch (error) {
         statusEl.innerHTML = `
-          <div class="bg-red-100 text-red-800 p-3 rounded">
-            Error: ${error.message}
+          <div class="bg-red-100 text-red-800 p-3 rounded flex items-center">
+            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+            <span>Error: ${error.message}</span>
           </div>
         `;
       } finally {
         btn.disabled = false;
       }
     });
+
+    // Auto-focus title field when form is shown
+    if (!document.getElementById('setup-alert').classList.contains('hidden')) {
+      document.getElementById('post-title')?.focus();
+    }
   </script>
 </body>
 </html>
