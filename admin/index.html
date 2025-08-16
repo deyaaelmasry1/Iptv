@@ -69,10 +69,14 @@
           document.getElementById('post-content').value
         );
         
+        // Modify the URLs to remove /Iptv/post/ path
+        const viewUrl = result.url.replace('/Iptv/post/', '/posts/');
+        const editUrl = result.editUrl;
+        
         statusEl.innerHTML = `
           <div class="bg-green-100 text-green-800 p-3 rounded">
-            Post created! <a href="${result.url}" class="text-blue-600 underline">View post</a>
-            or <a href="${result.editUrl}" target="_blank" class="text-blue-600 underline">edit on GitHub</a>
+            Post created! <a href="${viewUrl}" class="text-blue-600 underline">View post</a>
+            or <a href="${editUrl}" target="_blank" class="text-blue-600 underline">edit on GitHub</a>
           </div>
         `;
         e.target.reset();
