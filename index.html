@@ -30,7 +30,7 @@
         <p id="last-updated" class="text-sm text-gray-500 mt-1">Last updated: Loading...</p>
       </div>
       <div class="flex space-x-4">
-        <a href="/admin/" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+        <a href="/admin/" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
           <i class="fas fa-plus mr-2"></i> New Post
         </a>
         <button id="refresh-posts" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg flex items-center">
@@ -55,10 +55,39 @@
     </div>
   </footer>
 
-  <script src="/js/github-api.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      const cms = new GitHubCMS();
+      // Mock CMS class for demonstration
+      class MockCMS {
+        async getPosts() {
+          // Simulate API delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Return mock posts
+          return [
+            {
+              slug: '2023-05-15-getting-started-with-tailwind',
+              title: 'Getting Started with Tailwind CSS',
+              excerpt: 'Learn how to quickly build beautiful interfaces with Tailwind CSS utility classes.',
+              date: '2023-05-15'
+            },
+            {
+              slug: '2023-04-22-responsive-design-principles',
+              title: 'Responsive Design Principles',
+              excerpt: 'Key principles for creating websites that work well on all devices.',
+              date: '2023-04-22'
+            },
+            {
+              slug: '2023-03-10-introduction-to-javascript',
+              title: 'Introduction to JavaScript',
+              excerpt: 'A beginner-friendly guide to the fundamentals of JavaScript programming.',
+              date: '2023-03-10'
+            }
+          ];
+        }
+      }
+      
+      const cms = new MockCMS();
       
       // Display posts function
       async function loadAndDisplayPosts() {
@@ -79,7 +108,7 @@
             <div class="bg-yellow-50 p-6 rounded-lg text-center">
               <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
               <p class="text-lg mb-4">No posts found</p>
-              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                 <i class="fas fa-plus mr-2"></i> Create First Post
               </a>
             </div>
@@ -115,7 +144,7 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-3">${post.title || 'Untitled Post'}</h3>
                 ${post.excerpt ? `<p class="text-gray-600 mb-3">${post.excerpt}</p>` : ''}
-                <div class="flex items-center text-blue-600 font-medium">
+                <div class="flex items-center text-blue-500 font-medium">
                   <span>Read post</span>
                   <i class="fas fa-arrow-right ml-2"></i>
                 </div>
