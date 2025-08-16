@@ -24,7 +24,6 @@ jobs:
       - name: Generate index.json
         run: |
           mkdir -p posts
-          # Create a Node script to process the files
           cat << 'EOF' > process-posts.js
           const fs = require('fs');
           const path = require('path');
@@ -51,18 +50,16 @@ jobs:
               .parse(content);
             
             visit(tree, (node) => {
-              // Extract title from first heading
               if (node.type === 'heading' && node.depth === 1 && !title) {
                 title = node.children[0].value;
               }
               
-              // Extract excerpt from first paragraph
               if (node.type === 'paragraph' && firstParagraph) {
                 excerpt = node.children
                   .filter(n => n.type === 'text')
                   .map(n => n.value)
                   .join(' ')
-                  .substring(0, 200); // Limit excerpt length
+                  .substring(0, 200);
                 firstParagraph = false;
               }
             });
@@ -79,7 +76,8 @@ jobs:
               title: data.title || markdownMetadata.title || file.replace('.md', '').replace(/^\d{4}-\d{2}-\d{2}-/, ''),
               slug: file.replace('.md', ''),
               date: data.date || file.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '',
-              excerpt: data.excerpt || markdownMetadata.excerpt || ''
+              excerpt: data.excerpt || markdownMetadata.excerpt || '',
+              content: content
             };
           });
           
