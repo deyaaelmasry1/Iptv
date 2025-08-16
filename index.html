@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Blog</title>
+  <link rel="stylesheet" href="/themes/default/style.css">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
-  <!-- Header will be injected here -->
   <div id="header-container"></div>
 
   <main class="container mx-auto px-4 py-8 max-w-4xl">
@@ -20,132 +20,36 @@
     </div>
 
     <div id="posts-container" class="space-y-6">
-      <!-- Loading State -->
-      <div id="loading" class="text-center py-12">
+      <div class="text-center py-12">
         <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
         <p class="mt-4 text-gray-500">Loading posts...</p>
       </div>
     </div>
 
-    <!-- Pagination -->
-    <div id="pagination-container" class="mt-8 flex justify-center">
-      <!-- Pagination will be injected here -->
-    </div>
+    <div id="pagination-container" class="mt-8 flex justify-center"></div>
   </main>
 
-  <!-- Footer will be injected here -->
   <div id="footer-container"></div>
 
   <script src="/js/theme-manager.js"></script>
   <script src="/js/github-api.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const theme = new ThemeManager();
-      await theme.loadTemplates();
-      theme.applyTemplate('header', 'header-container');
-      theme.applyTemplate('footer', 'footer-container');
-
       const cms = new GitHubCMS();
-      const container = document.getElementById('posts-container');
-      const loading = document.getElementById('loading');
-      const paginationContainer = document.getElementById('pagination-container');
-
-      // Pagination variables
-      let currentPage = 1;
-      const postsPerPage = 10;
-      let allPosts = [];
-
-      function displayPosts(posts, page) {
-        const startIndex = (page - 1) * postsPerPage;
-        const endIndex = startIndex + postsPerPage;
-        const paginatedPosts = posts.slice(startIndex, endIndex);
-
-        container.innerHTML = paginatedPosts.map(post => {
-          const title = post
-            .replace(/^\d{4}-\d{2}-\d{2}-/, '')
-            .replace(/\.md$/, '')
-            .replace(/-/g, ' ')
-            .replace(/\b\w/g, c => c.toUpperCase());
-            
-          const date = post.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
-
-          return `
-            <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-              <a href="/posts/${post.replace('.md', '.html')}" class="block p-6">
-                <div class="flex items-center text-sm text-gray-500 mb-2">
-                  <i class="far fa-calendar mr-2"></i>
-                  ${new Date(date).toLocaleDateString() || ''}
-                </div>
-                <h2 class="text-xl font-bold text-gray-800 mb-3">${title}</h2>
-                <div class="flex items-center text-blue-600">
-                  <span>Read post</span>
-                  <i class="fas fa-arrow-right ml-2"></i>
-                </div>
-              </a>
-            </article>
-          `;
-        }).join('');
-      }
-
-      function setupPagination(posts, container, postsPerPage) {
-        container.innerHTML = '';
-        const pageCount = Math.ceil(posts.length / postsPerPage);
-
-        if (pageCount <= 1) return;
-
-        // Previous button
-        const prevButton = document.createElement('button');
-        prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
-        prevButton.className = 'px-3 py-1 mx-1 rounded border border-gray-300 hover:bg-gray-100';
-        prevButton.disabled = currentPage === 1;
-        prevButton.addEventListener('click', () => {
-          if (currentPage > 1) {
-            currentPage--;
-            displayPosts(posts, currentPage);
-            setupPagination(posts, paginationContainer, postsPerPage);
-          }
-        });
-        container.appendChild(prevButton);
-
-        // Page numbers
-        for (let i = 1; i <= pageCount; i++) {
-          const pageButton = document.createElement('button');
-          pageButton.textContent = i;
-          pageButton.className = `px-3 py-1 mx-1 rounded border ${currentPage === i ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-300 hover:bg-gray-100'}`;
-          pageButton.addEventListener('click', () => {
-            currentPage = i;
-            displayPosts(posts, currentPage);
-            setupPagination(posts, paginationContainer, postsPerPage);
-          });
-          container.appendChild(pageButton);
-        }
-
-        // Next button
-        const nextButton = document.createElement('button');
-        nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
-        nextButton.className = 'px-3 py-1 mx-1 rounded border border-gray-300 hover:bg-gray-100';
-        nextButton.disabled = currentPage === pageCount;
-        nextButton.addEventListener('click', () => {
-          if (currentPage < pageCount) {
-            currentPage++;
-            displayPosts(posts, currentPage);
-            setupPagination(posts, paginationContainer, postsPerPage);
-          }
-        });
-        container.appendChild(nextButton);
-      }
-
+      
       try {
-        // Fetch from GitHub Pages root
-        allPosts = await fetch('/posts/index.json?nocache=' + Date.now())
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []);
+        // Load theme templates
+        await theme.init();
+        theme.applyTemplate('header', 'header-container');
+        theme.applyTemplate('footer', 'footer-container');
 
-        loading.remove();
-
-        if (!allPosts.length) {
-          container.innerHTML = `
+        // Load posts
+        const posts = await cms.getPosts();
+        const postsContainer = document.getElementById('posts-container');
+        
+        if (!posts.length) {
+          postsContainer.innerHTML = `
             <div class="bg-yellow-50 p-6 rounded-lg text-center">
               <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
               <p class="text-lg mb-4">No posts found</p>
@@ -157,19 +61,27 @@
           return;
         }
 
-        // Sort posts by date (newest first)
-        allPosts.sort((a, b) => {
-          const dateA = a.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
-          const dateB = b.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
-          return new Date(dateB) - new Date(dateA);
-        });
-
-        displayPosts(allPosts, currentPage);
-        setupPagination(allPosts, paginationContainer, postsPerPage);
+        // Render posts
+        postsContainer.innerHTML = posts.map(post => `
+          <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <a href="/post/${post.slug}.html" class="block p-6">
+              <div class="flex items-center text-sm text-gray-500 mb-2">
+                <i class="far fa-calendar mr-2"></i>
+                ${post.date ? new Date(post.date).toLocaleDateString() : ''}
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 mb-3">${post.title}</h2>
+              ${post.excerpt ? `<p class="text-gray-600 mb-3">${post.excerpt}</p>` : ''}
+              <div class="flex items-center text-blue-600">
+                <span>Read post</span>
+                <i class="fas fa-arrow-right ml-2"></i>
+              </div>
+            </a>
+          </article>
+        `).join('');
 
       } catch (error) {
-        loading.remove();
-        container.innerHTML = `
+        console.error('Failed to load page:', error);
+        document.getElementById('posts-container').innerHTML = `
           <div class="bg-red-50 p-6 rounded-lg text-center">
             <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
             <p class="text-lg mb-4">Failed to load posts</p>
