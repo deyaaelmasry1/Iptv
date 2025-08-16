@@ -13,11 +13,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          
+      - name: Install dependencies
+        run: npm install gray-matter
+      
       - name: Generate index.json
         run: |
           mkdir -p posts
-          files=$(find posts -name "*.md" -printf "%f\n" | sort -r)
-          echo "$files" | jq -R -s 'split("\n") | map(select(. != ""))' > posts/index.json
+          # Create a Node script to process the files
+          cat << 'EOF' > process-posts.js
+          const fs = require('fs');
+          const path = require('path');
+          const matter = require('gray-matter');
+          
+          const postsDir = 'posts';
+          const files = fs.readdirSync(postsDir)
+            .filter(file => file.endsWith('.md'))
+            .sort()
+            .reverse();
+          
+          const posts = files.map(file => {
+            const content = fs.readFileSync(path.join(postsDir, file), 'utf8');
+            const { data } = matter(content);
+            
+            return {
+              title: data.title || file.replace('.md', '').replace(/^\d{4}-\d{2}-\d{2}-/, ''),
+              slug: file.replace('.md', ''),
+              date: data.date || file.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '',
+              excerpt: data.excerpt || ''
+            };
+          });
+          
+          fs.writeFileSync(
+            path.join(postsDir, 'index.json'),
+            JSON.stringify(posts, null, 2)
+          );
+          EOF
+          
+          node process-posts.js
           
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
