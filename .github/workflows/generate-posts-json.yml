@@ -12,33 +12,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for accurate git diff
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Generate JSON index
+      - name: Generate JSON index and HTML pages
         id: generate-json
         run: |
           #!/bin/bash
           set -euo pipefail
           
-          mkdir -p posts
+          mkdir -p posts_html
           
-          echo "Generating posts index..."
+          echo "Generating posts index + HTML..."
           node -e "
             const fs = require('fs');
             const path = require('path');
             const postsDir = 'posts';
-            
+            const outDir = 'posts_html';
+
+            if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+
             const files = fs.readdirSync(postsDir)
               .filter(file => ['.md', '.markdown'].includes(path.extname(file).toLowerCase()))
               .sort((a, b) => {
                 return fs.statSync(path.join(postsDir, b)).mtimeMs - fs.statSync(path.join(postsDir, a)).mtimeMs;
               });
-            
+
             const index = files.map(file => {
               const content = fs.readFileSync(path.join(postsDir, file), 'utf8');
               const titleMatch = content.match(/^title:\s*(.*)$/mi);
@@ -47,27 +50,46 @@ jobs:
               if (!titleMatch) {
                 throw new Error(\`Missing 'title:' in \${file}. Please add a title field.\`);
               }
+
+              const title = titleMatch[1].trim();
+              const slug = path.parse(file).name;
               
+              // Create raw HTML wrapper showing the raw Markdown
+              const html = \`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>\${title}</title>
+</head>
+<body>
+  <h1>\${title}</h1>
+  <pre>\${content.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>
+</body>
+</html>\`;
+
+              fs.writeFileSync(path.join(outDir, slug + '.html'), html);
+
               return {
                 file,
-                title: titleMatch[1].trim(),
+                title,
                 date: dateMatch ? dateMatch[1].trim() : fs.statSync(path.join(postsDir, file)).mtime.toISOString(),
-                url: \`/posts/\${path.parse(file).name}\`
+                url: \`/posts_html/\${slug}.html\`
               };
             });
-            
+
             fs.writeFileSync(path.join(postsDir, 'index.json'), JSON.stringify(index, null, 2));
-            console.log(\`Generated index with \${index.length} posts\`);
+            console.log(\`Generated index + \${files.length} HTML pages\`);
           "
-          
+
       - name: Commit and push changes
         if: steps.generate-json.outcome == 'success'
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add posts/index.json
+          git add posts/index.json posts_html/
           if ! git diff --cached --quiet; then
-            git commit -m "chore: Auto-update posts index [skip ci]"
+            git commit -m "chore: Auto-generate posts index & html [skip ci]"
             git push
           else
             echo "No changes detected."
