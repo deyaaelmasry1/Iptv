@@ -26,6 +26,11 @@
         <p class="mt-4 text-gray-500">Loading posts...</p>
       </div>
     </div>
+
+    <!-- Pagination -->
+    <div id="pagination-container" class="mt-8 flex justify-center">
+      <!-- Pagination will be injected here -->
+    </div>
   </main>
 
   <!-- Footer will be injected here -->
@@ -44,29 +49,19 @@
       const cms = new GitHubCMS();
       const container = document.getElementById('posts-container');
       const loading = document.getElementById('loading');
+      const paginationContainer = document.getElementById('pagination-container');
 
-      try {
-        // Fetch from GitHub Pages root
-        const posts = await fetch('/posts/index.json?nocache=' + Date.now())
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []);
+      // Pagination variables
+      let currentPage = 1;
+      const postsPerPage = 10;
+      let allPosts = [];
 
-        loading.remove();
+      function displayPosts(posts, page) {
+        const startIndex = (page - 1) * postsPerPage;
+        const endIndex = startIndex + postsPerPage;
+        const paginatedPosts = posts.slice(startIndex, endIndex);
 
-        if (!posts.length) {
-          container.innerHTML = `
-            <div class="bg-yellow-50 p-6 rounded-lg text-center">
-              <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
-              <p class="text-lg mb-4">No posts found</p>
-              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <i class="fas fa-plus mr-2"></i> Create First Post
-              </a>
-            </div>
-          `;
-          return;
-        }
-
-        container.innerHTML = posts.map(post => {
+        container.innerHTML = paginatedPosts.map(post => {
           const title = post
             .replace(/^\d{4}-\d{2}-\d{2}-/, '')
             .replace(/\.md$/, '')
@@ -91,6 +86,86 @@
             </article>
           `;
         }).join('');
+      }
+
+      function setupPagination(posts, container, postsPerPage) {
+        container.innerHTML = '';
+        const pageCount = Math.ceil(posts.length / postsPerPage);
+
+        if (pageCount <= 1) return;
+
+        // Previous button
+        const prevButton = document.createElement('button');
+        prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevButton.className = 'px-3 py-1 mx-1 rounded border border-gray-300 hover:bg-gray-100';
+        prevButton.disabled = currentPage === 1;
+        prevButton.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            displayPosts(posts, currentPage);
+            setupPagination(posts, paginationContainer, postsPerPage);
+          }
+        });
+        container.appendChild(prevButton);
+
+        // Page numbers
+        for (let i = 1; i <= pageCount; i++) {
+          const pageButton = document.createElement('button');
+          pageButton.textContent = i;
+          pageButton.className = `px-3 py-1 mx-1 rounded border ${currentPage === i ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-300 hover:bg-gray-100'}`;
+          pageButton.addEventListener('click', () => {
+            currentPage = i;
+            displayPosts(posts, currentPage);
+            setupPagination(posts, paginationContainer, postsPerPage);
+          });
+          container.appendChild(pageButton);
+        }
+
+        // Next button
+        const nextButton = document.createElement('button');
+        nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextButton.className = 'px-3 py-1 mx-1 rounded border border-gray-300 hover:bg-gray-100';
+        nextButton.disabled = currentPage === pageCount;
+        nextButton.addEventListener('click', () => {
+          if (currentPage < pageCount) {
+            currentPage++;
+            displayPosts(posts, currentPage);
+            setupPagination(posts, paginationContainer, postsPerPage);
+          }
+        });
+        container.appendChild(nextButton);
+      }
+
+      try {
+        // Fetch from GitHub Pages root
+        allPosts = await fetch('/posts/index.json?nocache=' + Date.now())
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []);
+
+        loading.remove();
+
+        if (!allPosts.length) {
+          container.innerHTML = `
+            <div class="bg-yellow-50 p-6 rounded-lg text-center">
+              <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
+              <p class="text-lg mb-4">No posts found</p>
+              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <i class="fas fa-plus mr-2"></i> Create First Post
+              </a>
+            </div>
+          `;
+          return;
+        }
+
+        // Sort posts by date (newest first)
+        allPosts.sort((a, b) => {
+          const dateA = a.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
+          const dateB = b.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
+          return new Date(dateB) - new Date(dateA);
+        });
+
+        displayPosts(allPosts, currentPage);
+        setupPagination(allPosts, paginationContainer, postsPerPage);
 
       } catch (error) {
         loading.remove();
