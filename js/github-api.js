@@ -6,6 +6,7 @@ class GitHubCMS {
     this.repo = config.repo || 'Iptv';
     this.baseUrl = 'https://api.github.com';
     this.postsUrl = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/main/posts`;
+    this.templatesUrl = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/main/templates`;
   }
 
   async createPost(title, content) {
@@ -65,6 +66,76 @@ class GitHubCMS {
       console.error('Failed to fetch post:', error);
       return null;
     }
+  }
+
+  async getFullPost(slug) {
+    try {
+      // Get the post content
+      const postResponse = await this.getPost(slug);
+      if (!postResponse) return null;
+      
+      // Get templates
+      const [header, footer] = await Promise.all([
+        this.fetchTemplate('header.html'),
+        this.fetchTemplate('footer.html')
+      ]);
+      
+      // Convert markdown to HTML
+      const htmlContent = this.markdownToHtml(postResponse.content);
+      
+      // Create full page HTML
+      const title = slug.replace(/-/g, ' ').replace(/\d{4}-\d{2}-\d{2}/, '').trim();
+      
+      return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${title}</title>
+          <link rel="stylesheet" href="/css/main.css">
+        </head>
+        <body>
+          ${header || '<header>Default Header</header>'}
+          <main class="post-container">
+            <article class="post-content">
+              ${htmlContent}
+            </article>
+          </main>
+          ${footer || '<footer>Default Footer</footer>'}
+        </body>
+        </html>
+      `;
+    } catch (error) {
+      console.error('Failed to generate full post:', error);
+      return null;
+    }
+  }
+
+  async fetchTemplate(templateName) {
+    try {
+      const response = await fetch(`${this.templatesUrl}/${templateName}?t=${Date.now()}`);
+      if (!response.ok) return '';
+      return await response.text();
+    } catch (error) {
+      console.error(`Failed to fetch template ${templateName}:`, error);
+      return '';
+    }
+  }
+
+  markdownToHtml(markdown) {
+    // Simple markdown to HTML conversion (consider using a library like marked.js for full support)
+    return markdown
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2">')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^\s*-\s(.*$)/gm, '<li>$1</li>')
+      .replace(/<li>.*<\/li>/g, '<ul>$&</ul>');
   }
 
   async triggerWorkflow(workflowFile) {
