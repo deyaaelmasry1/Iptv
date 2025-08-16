@@ -55,35 +55,26 @@
     </div>
   </footer>
 
+  <script src="/js/github-api.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      // Sample posts data - replace with your actual data fetching logic
-      const samplePosts = [
-        {
-          title: "Getting Started with JavaScript",
-          slug: "2023-11-15-getting-started-with-javascript",
-          date: "2023-11-15",
-          excerpt: "Learn the basics of JavaScript programming language."
-        },
-        {
-          title: "CSS Tips and Tricks",
-          slug: "2023-11-10-css-tips-and-tricks",
-          date: "2023-11-10",
-          excerpt: "Useful CSS techniques to improve your styling workflow."
-        },
-        {
-          title: "Introduction to HTML5",
-          slug: "2023-11-05-introduction-to-html5",
-          date: "2023-11-05",
-          excerpt: "Discover the new features of HTML5 specification."
-        }
-      ];
-
+      const cms = new GitHubCMS();
+      
       // Display posts function
+      async function loadAndDisplayPosts() {
+        try {
+          const posts = await cms.getPosts();
+          displayPosts(posts);
+        } catch (error) {
+          console.error('Error loading posts:', error);
+          showError('Failed to load posts. Please try again.');
+        }
+      }
+
       function displayPosts(posts) {
         const postsContainer = document.getElementById('posts-container');
         
-        if (posts.length === 0) {
+        if (!posts || posts.length === 0) {
           postsContainer.innerHTML = `
             <div class="bg-yellow-50 p-6 rounded-lg text-center">
               <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
@@ -96,31 +87,63 @@
           return;
         }
 
-        postsContainer.innerHTML = posts.map(post => `
-          <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <a href="/posts/${post.slug}.html" class="block p-6">
-              <div class="flex items-center text-sm text-gray-500 mb-2">
-                <i class="far fa-calendar-alt mr-2"></i>
-                ${new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
-              <h3 class="text-xl font-bold text-gray-800 mb-3">${post.title}</h3>
-              ${post.excerpt ? `<p class="text-gray-600 mb-3">${post.excerpt}</p>` : ''}
-              <div class="flex items-center text-blue-600 font-medium">
-                <span>Read post</span>
-                <i class="fas fa-arrow-right ml-2"></i>
-              </div>
-            </a>
-          </article>
-        `).join('');
+        // Sort posts by date (newest first)
+        const sortedPosts = posts.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : extractDateFromSlug(a.slug);
+          const dateB = b.date ? new Date(b.date) : extractDateFromSlug(b.slug);
+          return dateB - dateA;
+        });
+
+        postsContainer.innerHTML = sortedPosts.map(post => {
+          const postDate = post.date ? new Date(post.date) : extractDateFromSlug(post.slug);
+          const formattedDate = postDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+
+          return `
+            <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+              <a href="/posts/${post.slug}.html" class="block p-6">
+                <div class="flex items-center text-sm text-gray-500 mb-2">
+                  <i class="far fa-calendar-alt mr-2"></i>
+                  ${formattedDate}
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-3">${post.title || 'Untitled Post'}</h3>
+                ${post.excerpt ? `<p class="text-gray-600 mb-3">${post.excerpt}</p>` : ''}
+                <div class="flex items-center text-blue-600 font-medium">
+                  <span>Read post</span>
+                  <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+              </a>
+            </article>
+          `;
+        }).join('');
 
         document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleString()}`;
       }
 
-      // Simulate loading data
-      setTimeout(() => {
-        document.getElementById('loading').remove();
-        displayPosts(samplePosts);
-      }, 1000);
+      function extractDateFromSlug(slug) {
+        // Try to extract date from slug (format: YYYY-MM-DD-rest-of-slug)
+        const dateMatch = slug.match(/^(\d{4}-\d{2}-\d{2})/);
+        return dateMatch ? new Date(dateMatch[1]) : new Date(0); // Default to epoch if no date found
+      }
+
+      function showError(message) {
+        const postsContainer = document.getElementById('posts-container');
+        postsContainer.innerHTML = `
+          <div class="bg-red-50 p-6 rounded-lg text-center">
+            <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+            <p class="text-lg mb-4">${message}</p>
+            <button onclick="window.location.reload()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+              <i class="fas fa-sync-alt mr-2"></i> Try Again
+            </button>
+          </div>
+        `;
+      }
+
+      // Initial load
+      loadAndDisplayPosts();
 
       // Refresh button functionality
       document.getElementById('refresh-posts').addEventListener('click', () => {
@@ -132,10 +155,7 @@
           </div>
         `;
         
-        setTimeout(() => {
-          postsContainer.innerHTML = '';
-          displayPosts(samplePosts);
-        }, 800);
+        loadAndDisplayPosts();
       });
     });
   </script>
