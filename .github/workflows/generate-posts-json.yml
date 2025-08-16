@@ -19,7 +19,7 @@ jobs:
           node-version: 18
           
       - name: Install dependencies
-        run: npm install gray-matter
+        run: npm install gray-matter remark remark-parse remark-frontmatter unist-util-visit
       
       - name: Generate index.json
         run: |
@@ -29,6 +29,10 @@ jobs:
           const fs = require('fs');
           const path = require('path');
           const matter = require('gray-matter');
+          const { remark } = require('remark');
+          const remarkParse = require('remark-parse');
+          const remarkFrontmatter = require('remark-frontmatter');
+          const { visit } = require('unist-util-visit');
           
           const postsDir = 'posts';
           const files = fs.readdirSync(postsDir)
@@ -36,15 +40,46 @@ jobs:
             .sort()
             .reverse();
           
+          const extractMarkdownMetadata = (content) => {
+            let title = '';
+            let excerpt = '';
+            let firstParagraph = true;
+            
+            const tree = remark()
+              .use(remarkParse)
+              .use(remarkFrontmatter)
+              .parse(content);
+            
+            visit(tree, (node) => {
+              // Extract title from first heading
+              if (node.type === 'heading' && node.depth === 1 && !title) {
+                title = node.children[0].value;
+              }
+              
+              // Extract excerpt from first paragraph
+              if (node.type === 'paragraph' && firstParagraph) {
+                excerpt = node.children
+                  .filter(n => n.type === 'text')
+                  .map(n => n.value)
+                  .join(' ')
+                  .substring(0, 200); // Limit excerpt length
+                firstParagraph = false;
+              }
+            });
+            
+            return { title, excerpt };
+          };
+          
           const posts = files.map(file => {
             const content = fs.readFileSync(path.join(postsDir, file), 'utf8');
             const { data } = matter(content);
+            const markdownMetadata = extractMarkdownMetadata(content);
             
             return {
-              title: data.title || file.replace('.md', '').replace(/^\d{4}-\d{2}-\d{2}-/, ''),
+              title: data.title || markdownMetadata.title || file.replace('.md', '').replace(/^\d{4}-\d{2}-\d{2}-/, ''),
               slug: file.replace('.md', ''),
               date: data.date || file.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '',
-              excerpt: data.excerpt || ''
+              excerpt: data.excerpt || markdownMetadata.excerpt || ''
             };
           });
           
