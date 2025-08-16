@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <title>Posts Management</title>
     <style>
-        .post-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .post-item { padding: 10px; border-bottom: 1px solid #eee; margin: 5px 0; }
         .post-item:hover { background: #f5f5f5; }
-        button { margin-left: 10px; }
-        #loading { color: #666; }
-        #error { color: red; }
+        button { margin-left: 10px; padding: 5px 10px; }
+        #loading, #error { margin: 10px 0; padding: 10px; }
+        #loading { background: #f0f0f0; }
+        #error { background: #ffebee; color: #c62828; }
     </style>
 </head>
 <body>
@@ -23,27 +24,55 @@
             const error = document.getElementById('error');
             const postList = document.getElementById('postList');
             
+            loading.textContent = "Loading posts...";
+            error.textContent = "";
+            postList.innerHTML = "";
+
             try {
-                // First try to load from index.json
+                // Load index.json
                 const response = await fetch('../posts/index.json');
-                if (!response.ok) throw new Error('Failed to load index.json');
                 
-                const data = await response.json();
-                if (!data.posts || !Array.isArray(data.posts)) {
-                    throw new Error('Invalid posts data format');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                loading.style.display = 'none';
-                error.textContent = '';
+                const data = await response.json();
                 
-                if (data.posts.length === 0) {
-                    postList.innerHTML = '<p>No posts found.</p>';
+                // Handle both array and object formats
+                let postsArray = [];
+                
+                if (Array.isArray(data)) {
+                    // If the JSON is directly an array of posts
+                    postsArray = data;
+                } else if (data.posts && Array.isArray(data.posts)) {
+                    // If the JSON has a posts array
+                    postsArray = data.posts;
+                } else if (data.file) {
+                    // If it's a single post object
+                    postsArray = [data];
+                } else {
+                    throw new Error("Unknown JSON format");
+                }
+                
+                // Filter only .md files
+                const mdPosts = postsArray.filter(post => 
+                    post.file && post.file.endsWith('.md')
+                );
+                
+                loading.style.display = 'none';
+                
+                if (mdPosts.length === 0) {
+                    postList.innerHTML = '<p>No Markdown posts found.</p>';
                     return;
                 }
 
-                postList.innerHTML = data.posts.map(post => `
+                // Display posts
+                postList.innerHTML = mdPosts.map(post => `
                     <div class="post-item">
-                        <strong>${post.title || post.file}</strong>
+                        <strong>${post.title || post.file.replace('.md', '')}</strong>
+                        <span style="color:#666; font-size:0.9em; margin-left:10px;">
+                            ${post.date ? new Date(post.date).toLocaleDateString() : ''}
+                        </span>
                         <button onclick="editPost('${post.file}')">Edit</button>
                         <button onclick="deletePost('${post.file}')">Delete</button>
                     </div>
@@ -51,33 +80,8 @@
                 
             } catch (err) {
                 loading.style.display = 'none';
-                error.textContent = `Error: ${err.message}`;
+                error.textContent = `Error loading posts: ${err.message}`;
                 console.error('Failed to load posts:', err);
-                
-                // Fallback: Try to list files from posts directory
-                try {
-                    const dirResponse = await fetch('../posts/');
-                    const html = await dirResponse.text();
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const links = Array.from(doc.querySelectorAll('a'))
-                        .map(a => a.getAttribute('href'))
-                        .filter(href => href.endsWith('.md'));
-                    
-                    if (links.length > 0) {
-                        postList.innerHTML = links.map(file => `
-                            <div class="post-item">
-                                <strong>${file.replace('.md', '')}</strong>
-                                <button onclick="editPost('${file}')">Edit</button>
-                                <button onclick="deletePost('${file}')">Delete</button>
-                            </div>
-                        `).join('');
-                    } else {
-                        postList.innerHTML = '<p>No Markdown files found in posts directory.</p>';
-                    }
-                } catch (dirErr) {
-                    error.textContent += ` | Also failed to list directory: ${dirErr.message}`;
-                }
             }
         }
 
@@ -86,14 +90,18 @@
         }
 
         async function deletePost(filename) {
-            if (!confirm(`Delete ${filename} permanently?`)) return;
+            if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
             
             try {
-                // In a real implementation, this would call your serverless function
+                // In a real implementation, this would call your API
                 console.log('Would delete:', filename);
-                alert('Delete functionality would be implemented here');
-                // Refresh the list after deletion
+                
+                // Simulate deletion
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Refresh the list
                 loadPosts();
+                alert('Post deleted successfully (simulated)');
             } catch (error) {
                 alert(`Error deleting post: ${error.message}`);
             }
