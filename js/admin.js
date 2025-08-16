@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (slug) {
       loadPostForEditing(slug);
+    } else {
+      // If no slug, this is a new post - generate initial slug from title
+      titleInput?.addEventListener('input', generateSlug);
     }
     
     setupEditForm();
@@ -47,6 +50,20 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => toast.remove(), 300);
     }, 5000);
   };
+
+  // Generate slug from title
+  function generateSlug() {
+    if (!slugInput || !titleInput) return;
+    
+    const title = titleInput.value.trim();
+    const slug = title.toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove non-word chars
+      .replace(/\s+/g, '-')     // Replace spaces with -
+      .replace(/--+/g, '-')     // Replace multiple - with single -
+      .substring(0, 50);        // Limit length
+    
+    slugInput.value = slug;
+  }
 
   // Form Validation
   const validateForm = () => {
@@ -80,6 +97,56 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     });
+  };
+
+  // Handle form submission for new posts
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    clearValidation();
+    
+    if (!validateForm()) {
+      showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    const postData = {
+      title: titleInput.value.trim(),
+      slug: slugInput.value.trim(),
+      content: contentInput.value.trim(),
+      date: new Date().toISOString()
+    };
+    
+    try {
+      // UI Loading State
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <span class="flex items-center">
+          <i class="fas fa-spinner fa-spin mr-2"></i>
+          Publishing...
+        </span>
+      `;
+      showToast('Creating your post...', 'info');
+
+      // Save the post
+      await savePost(postData);
+      
+      // Success Handling
+      showToast('Post created successfully!');
+      
+      // Reset form and redirect
+      postForm.reset();
+      setTimeout(() => {
+        window.location.href = '/admin/posts/index.html';
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Post creation failed:', error);
+      showToast(error.message || 'Failed to create post', 'error');
+    } finally {
+      // Reset UI
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Publish Post';
+    }
   };
 
   // Load posts for the admin list
@@ -207,6 +274,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const indexResponse = await fetch('/admin/posts/index.json');
       let posts = await indexResponse.json();
       
+      if (!Array.isArray(posts)) {
+        posts = []; // Initialize if index.json is empty or invalid
+      }
+      
       if (originalSlug && originalSlug !== postData.slug) {
         // If slug changed, remove old entry and delete old file
         posts = posts.filter(p => p.slug !== originalSlug);
@@ -277,5 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
   clearValidation();
   if (postForm) {
     postForm.addEventListener('submit', handleSubmit);
+    titleInput?.addEventListener('input', generateSlug);
   }
 });
