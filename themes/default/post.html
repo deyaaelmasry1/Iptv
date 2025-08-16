@@ -53,7 +53,7 @@
         // Load post data
         const posts = await cms.getPosts();
         const post = posts.find(p => p.slug === slug);
-        
+
         if (!post) throw new Error('Post not found');
 
         // Set page title
