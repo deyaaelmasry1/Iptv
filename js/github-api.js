@@ -61,7 +61,12 @@ class GitHubCMS {
       const response = await fetch(`${this.postsUrl}/${slug}.md?t=${Date.now()}`);
       if (!response.ok) return null;
       const content = await response.text();
-      return { slug, content };
+
+      // اجلب العنوان من أول Heading في الماركداون
+      const titleMatch = content.match(/^# (.*)/m);
+      const title = titleMatch ? titleMatch[1].trim() : slug;
+
+      return { slug, title, content };
     } catch (error) {
       console.error('Failed to fetch post:', error);
       return null;
@@ -70,35 +75,30 @@ class GitHubCMS {
 
   async getFullPost(slug) {
     try {
-      // Get the post content
       const postResponse = await this.getPost(slug);
       if (!postResponse) return null;
-      
-      // Get templates
+
       const [header, footer] = await Promise.all([
         this.fetchTemplate('header.html'),
         this.fetchTemplate('footer.html')
       ]);
-      
-      // Convert markdown to HTML
+
       const htmlContent = this.markdownToHtml(postResponse.content);
-      
-      // Create full page HTML
-      const title = slug.replace(/-/g, ' ').replace(/\d{4}-\d{2}-\d{2}/, '').trim();
-      
+
       return `
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${title}</title>
+          <title>${postResponse.title}</title>
           <link rel="stylesheet" href="/css/main.css">
         </head>
         <body>
           ${header || '<header>Default Header</header>'}
           <main class="post-container">
             <article class="post-content">
+              <h1 class="text-3xl font-bold text-gray-800 mb-6">${postResponse.title}</h1>
               ${htmlContent}
             </article>
           </main>
@@ -124,7 +124,6 @@ class GitHubCMS {
   }
 
   markdownToHtml(markdown) {
-    // Simple markdown to HTML conversion (consider using a library like marked.js for full support)
     return markdown
       .replace(/^# (.*$)/gm, '<h1>$1</h1>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
