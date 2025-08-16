@@ -12,11 +12,19 @@
   <div id="header-container"></div>
 
   <main class="container mx-auto px-4 py-8 max-w-4xl">
-    <div class="flex justify-between items-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-800">Latest Posts</h1>
-      <a href="/admin/" class="text-blue-600 hover:underline flex items-center">
-        <i class="fas fa-plus mr-2"></i> New Post
-      </a>
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Latest Posts</h1>
+        <p id="last-updated" class="text-sm text-gray-500"></p>
+      </div>
+      <div class="flex">
+        <a href="/admin/" class="text-blue-600 hover:underline flex items-center">
+          <i class="fas fa-plus mr-2"></i> New Post
+        </a>
+        <button id="refresh-posts" class="text-blue-600 hover:underline flex items-center ml-4">
+          <i class="fas fa-sync-alt mr-2"></i> Refresh
+        </button>
+      </div>
     </div>
 
     <div id="posts-container" class="space-y-6">
@@ -34,6 +42,12 @@
   <script src="/js/theme-manager.js"></script>
   <script src="/js/github-api.js"></script>
   <script>
+    window.onpageshow = function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+
     document.addEventListener('DOMContentLoaded', async () => {
       const theme = new ThemeManager();
       const cms = new GitHubCMS();
@@ -70,6 +84,8 @@
             </a>
           </article>
         `).join('');
+        
+        document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleString()}`;
       }
 
       function setupPagination(posts, container, postsPerPage) {
@@ -120,49 +136,83 @@
         container.appendChild(nextButton);
       }
 
-      try {
-        // Load posts
-        allPosts = await cms.getPosts();
-        const loadingElement = document.getElementById('loading');
-        if (loadingElement) loadingElement.remove();
+      async function loadPosts() {
+        try {
+          // Load posts
+          allPosts = await cms.getPosts();
+          const loadingElement = document.getElementById('loading');
+          if (loadingElement) loadingElement.remove();
 
-        if (!allPosts.length) {
+          if (!allPosts.length) {
+            document.getElementById('posts-container').innerHTML = `
+              <div class="bg-yellow-50 p-6 rounded-lg text-center">
+                <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
+                <p class="text-lg mb-4">No posts found</p>
+                <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <i class="fas fa-plus mr-2"></i> Create First Post
+                </a>
+              </div>
+            `;
+            return;
+          }
+
+          // Sort posts by date (newest first)
+          allPosts.sort((a, b) => {
+            const getDate = (post) => {
+              if (post.date) return new Date(post.date);
+              const dateMatch = post.slug.match(/^(\d{4}-\d{2}-\d{2})/);
+              if (dateMatch) return new Date(dateMatch[1]);
+              return new Date(0); // Default to epoch if no date found
+            };
+            return getDate(b) - getDate(a);
+          });
+
+          displayPosts(allPosts, currentPage);
+          setupPagination(allPosts, document.getElementById('pagination-container'), postsPerPage);
+
+        } catch (error) {
+          const loadingElement = document.getElementById('loading');
+          if (loadingElement) loadingElement.remove();
+          
           document.getElementById('posts-container').innerHTML = `
-            <div class="bg-yellow-50 p-6 rounded-lg text-center">
-              <i class="far fa-newspaper text-4xl text-yellow-400 mb-4"></i>
-              <p class="text-lg mb-4">No posts found</p>
-              <a href="/admin/" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <i class="fas fa-plus mr-2"></i> Create First Post
-              </a>
+            <div class="bg-red-50 p-6 rounded-lg text-center">
+              <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+              <p class="text-lg mb-4">Failed to load posts</p>
+              <button onclick="window.location.reload()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                <i class="fas fa-sync-alt mr-2"></i> Try Again
+              </button>
             </div>
           `;
-          return;
         }
+      }
 
-        // Sort posts by date (newest first)
-        allPosts.sort((a, b) => {
-          const dateA = a.date || a.slug.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
-          const dateB = b.date || b.slug.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
-          return new Date(dateB) - new Date(dateA);
-        });
+      // Initial load
+      await loadPosts();
 
-        displayPosts(allPosts, currentPage);
-        setupPagination(allPosts, document.getElementById('pagination-container'), postsPerPage);
-
-      } catch (error) {
-        const loadingElement = document.getElementById('loading');
-        if (loadingElement) loadingElement.remove();
-        
-        document.getElementById('posts-container').innerHTML = `
-          <div class="bg-red-50 p-6 rounded-lg text-center">
-            <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-            <p class="text-lg mb-4">Failed to load posts</p>
-            <button onclick="window.location.reload()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
-              <i class="fas fa-sync-alt mr-2"></i> Try Again
-            </button>
+      // Refresh button handler
+      document.getElementById('refresh-posts').addEventListener('click', async () => {
+        const postsContainer = document.getElementById('posts-container');
+        postsContainer.innerHTML = `
+          <div class="text-center py-12">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p class="mt-4 text-gray-500">Refreshing posts...</p>
           </div>
         `;
-      }
+        
+        try {
+          await loadPosts();
+        } catch (error) {
+          postsContainer.innerHTML = `
+            <div class="bg-red-50 p-6 rounded-lg text-center">
+              <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+              <p class="text-lg mb-4">Failed to refresh posts</p>
+              <button onclick="window.location.reload()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                <i class="fas fa-sync-alt mr-2"></i> Try Again
+              </button>
+            </div>
+          `;
+        }
+      });
     });
   </script>
 </body>
