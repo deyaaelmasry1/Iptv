@@ -102,9 +102,13 @@
             day: 'numeric' 
           });
 
+          // Ensure we have a valid slug for the URL
+          const postSlug = generateValidSlug(post.slug || post.title || 'untitled-post');
+          const postUrl = `/posts/${postSlug}.html`;
+
           return `
             <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-              <a href="/posts/${post.slug}.html" class="block p-6">
+              <a href="${postUrl}" class="block p-6">
                 <div class="flex items-center text-sm text-gray-500 mb-2">
                   <i class="far fa-calendar-alt mr-2"></i>
                   ${formattedDate}
@@ -125,8 +129,29 @@
 
       function extractDateFromSlug(slug) {
         // Try to extract date from slug (format: YYYY-MM-DD-rest-of-slug)
-        const dateMatch = slug.match(/^(\d{4}-\d{2}-\d{2})/);
+        const dateMatch = slug?.match(/^(\d{4}-\d{2}-\d{2})/);
         return dateMatch ? new Date(dateMatch[1]) : new Date(0); // Default to epoch if no date found
+      }
+
+      function generateValidSlug(input) {
+        if (!input) return 'untitled-post';
+        
+        // If already starts with date, keep it
+        if (/^\d{4}-\d{2}-\d{2}/.test(input)) {
+          return input;
+        }
+        
+        // Otherwise add current date and convert to slug
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        
+        // Convert to slug-friendly format
+        const slugPart = input.toLowerCase()
+          .replace(/[^\w\s-]/g, '') // Remove non-word chars
+          .replace(/\s+/g, '-')    // Replace spaces with -
+          .replace(/--+/g, '-');   // Replace multiple - with single -
+        
+        return `${dateStr}-${slugPart}`;
       }
 
       function showError(message) {
