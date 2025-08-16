@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Blog</title>
   <link rel="stylesheet" href="/themes/default/style.css">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link hreaf="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -62,6 +62,30 @@
       theme.applyTemplate('header', 'header-container');
       theme.applyTemplate('footer', 'footer-container');
 
+      function formatPostUrl(post) {
+        // Extract date from post (either from post.date or from slug)
+        let postDate = post.date ? new Date(post.date) : null;
+        
+        // If no date in post metadata, try to extract from slug
+        if (!postDate) {
+          const dateMatch = post.slug.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            postDate = new Date(dateMatch[1]);
+          }
+        }
+        
+        // Format date as YYYY-MM-DD
+        const formattedDate = postDate 
+          ? postDate.toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]; // Default to today if no date
+        
+        // Extract slug part (remove date if it exists at start)
+        let slugPart = post.slug.replace(/^\d{4}-\d{2}-\d{2}-?/, '');
+        
+        // Combine to create final URL
+        return `/posts/${formattedDate}-${slugPart}.html`;
+      }
+
       function displayPosts(posts, page) {
         const startIndex = (page - 1) * postsPerPage;
         const endIndex = startIndex + postsPerPage;
@@ -70,7 +94,7 @@
         const postsContainer = document.getElementById('posts-container');
         postsContainer.innerHTML = paginatedPosts.map(post => `
           <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <a href="/posts/${post.slug}.html" class="block p-6">
+            <a href="${formatPostUrl(post)}" class="block p-6">
               <div class="flex items-center text-sm text-gray-500 mb-2">
                 <i class="far fa-calendar mr-2"></i>
                 ${post.date ? new Date(post.date).toLocaleDateString() : ''}
