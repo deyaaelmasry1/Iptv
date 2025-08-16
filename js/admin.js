@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const postForm = document.getElementById('post-form');
   const submitBtn = document.getElementById('submit-btn');
-  const statusMessage = document.getElementById('status-message');
   const titleInput = document.getElementById('post-title');
   const contentInput = document.getElementById('post-content');
   const slugInput = document.getElementById('post-slug');
@@ -14,22 +13,24 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPostsList();
   }
   
-  // Check if we're on the edit page
+  // Check if we're on the edit page (could be new or existing post)
   if (editForm) {
     const urlParams = new URLSearchParams(window.location.search);
     const slug = urlParams.get('slug');
     
     if (slug) {
+      // Editing existing post
       loadPostForEditing(slug);
     } else {
-      // If no slug, this is a new post - generate initial slug from title
+      // Creating new post - generate slug from title
       titleInput?.addEventListener('input', generateSlug);
     }
     
-    setupEditForm();
+    // Setup form submission for both new and edit
+    editForm.addEventListener('submit', handleFormSubmit);
   }
 
-  // Toast Notification Functions
+  // Toast Notification Function
   const showToast = (message, type = 'success') => {
     const toast = document.createElement('div');
     toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 text-white ${
@@ -99,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Handle form submission for new posts
-  const handleSubmit = async (e) => {
+  // Main form submission handler (for both new and edit)
+  async function handleFormSubmit(e) {
     e.preventDefault();
     clearValidation();
     
@@ -122,32 +123,34 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.innerHTML = `
         <span class="flex items-center">
           <i class="fas fa-spinner fa-spin mr-2"></i>
-          Publishing...
+          Saving...
         </span>
       `;
-      showToast('Creating your post...', 'info');
 
+      // Get original slug from URL (if editing)
+      const urlParams = new URLSearchParams(window.location.search);
+      const originalSlug = urlParams.get('slug');
+      
       // Save the post
-      await savePost(postData);
+      await savePost(postData, originalSlug);
       
       // Success Handling
-      showToast('Post created successfully!');
+      showToast(originalSlug ? 'Post updated successfully!' : 'Post created successfully!');
       
-      // Reset form and redirect
-      postForm.reset();
+      // Redirect to posts list after a short delay
       setTimeout(() => {
         window.location.href = '/admin/posts/index.html';
       }, 1500);
       
     } catch (error) {
-      console.error('Post creation failed:', error);
-      showToast(error.message || 'Failed to create post', 'error');
+      console.error('Post operation failed:', error);
+      showToast(error.message || 'Failed to save post', 'error');
     } finally {
       // Reset UI
       submitBtn.disabled = false;
-      submitBtn.innerHTML = 'Publish Post';
+      submitBtn.innerHTML = originalSlug ? 'Update Post' : 'Publish Post';
     }
-  };
+  }
 
   // Load posts for the admin list
   async function loadPostsList() {
@@ -209,55 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Setup edit form submission
-  function setupEditForm() {
-    editForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearValidation();
-      
-      if (!validateForm()) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-      }
-      
-      const postData = {
-        title: titleInput.value.trim(),
-        slug: slugInput.value.trim(),
-        content: contentInput.value.trim(),
-        date: new Date().toISOString()
-      };
-      
-      try {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `
-          <span class="flex items-center">
-            <i class="fas fa-spinner fa-spin mr-2"></i>
-            Saving...
-          </span>
-        `;
-        
-        // Get original slug from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const originalSlug = urlParams.get('slug');
-        
-        await savePost(postData, originalSlug);
-        showToast('Post saved successfully!');
-        
-        // Redirect to posts list after a short delay
-        setTimeout(() => {
-          window.location.href = '/admin/posts/index.html';
-        }, 1500);
-        
-      } catch (error) {
-        console.error('Error saving post:', error);
-        showToast(error.message || 'Failed to save post', 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Save Post';
-      }
-    });
-  }
-  
   // Save post (create or update)
   async function savePost(postData, originalSlug = null) {
     try {
@@ -271,11 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!postResponse.ok) throw new Error('Failed to save post content');
       
       // Then update the posts index
-      const indexResponse = await fetch('/admin/posts/index.json');
-      let posts = await indexResponse.json();
-      
-      if (!Array.isArray(posts)) {
-        posts = []; // Initialize if index.json is empty or invalid
+      let posts = [];
+      try {
+        const indexResponse = await fetch('/admin/posts/index.json');
+        posts = await indexResponse.json();
+        if (!Array.isArray(posts)) posts = []; // Ensure it's an array
+      } catch (e) {
+        // If index.json doesn't exist or is invalid, start fresh
+        posts = [];
       }
       
       if (originalSlug && originalSlug !== postData.slug) {
@@ -347,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize
   clearValidation();
   if (postForm) {
-    postForm.addEventListener('submit', handleSubmit);
+    postForm.addEventListener('submit', handleFormSubmit);
     titleInput?.addEventListener('input', generateSlug);
   }
 });
