@@ -37,6 +37,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         delay: 1000
       });
       console.debug('Posts loaded:', posts);
+      
+      // Ensure we have the expected format
+      posts = posts.map(post => {
+        return {
+          title: post.title,
+          slug: post.slug || (post.filename ? post.filename.replace('.md', '') : ''),
+          date: post.date,
+          excerpt: post.excerpt || ''
+        };
+      }).filter(post => post.title && post.slug); // Filter out invalid posts
     } catch (err) {
       console.warn('Failed to load posts index:', err);
       posts = [];
@@ -62,8 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const fragment = document.createDocumentFragment();
     
-    posts.forEach(postFile => {
-      const { title, slug } = processPostFilename(postFile);
+    posts.forEach(post => {
+      const { title, slug, excerpt, date } = post;
       
       const postEl = document.createElement('article');
       postEl.className = 'mb-8 p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow';
@@ -73,8 +83,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         </h2>
         <div class="flex items-center text-gray-500 text-sm mb-4">
           <i class="far fa-calendar-alt mr-2"></i>
-          <span>${extractDateFromSlug(slug)}</span>
+          <span>${formatPostDate(date || slug)}</span>
         </div>
+        ${excerpt ? `<p class="text-gray-600 mb-4">${excerpt}</p>` : ''}
         <a href="/Iptv/post/${slug}.html" 
            class="inline-flex items-center text-blue-600 hover:underline">
           Read post <i class="fas fa-arrow-right ml-2"></i>
@@ -87,18 +98,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.appendChild(fragment);
   }
 
-  function processPostFilename(filename) {
-    const slug = filename.replace('.md', '');
-    let title = slug
-      .replace(/^\d{4}-\d{2}-\d{2}-/, '')
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-      
-    return { slug, title };
-  }
-
-  function extractDateFromSlug(slug) {
-    const dateMatch = slug.match(/^(\d{4}-\d{2}-\d{2})/);
+  function formatPostDate(dateString) {
+    if (!dateString) return '';
+    
+    // Try to parse as ISO date first
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+    } catch {
+      // Fall through to slug parsing
+    }
+    
+    // Try to extract date from slug if it's in YYYY-MM-DD format
+    const dateMatch = dateString.match(/^(\d{4}-\d{2}-\d{2})/);
     if (dateMatch) {
       try {
         return new Date(dateMatch[1]).toLocaleDateString('en-US', {
@@ -110,6 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return dateMatch[1];
       }
     }
+    
     return '';
   }
 
