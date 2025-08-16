@@ -16,36 +16,49 @@ jobs:
         with:
           fetch-depth: 0  # Full history for accurate git diff
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Generate JSON index
         id: generate-json
         run: |
-          set -euo pipefail  # Strict error handling
+          #!/bin/bash
+          set -euo pipefail
+          
+          # Create posts directory if it doesn't exist
           mkdir -p posts
-
-          # Find all .md/.markdown files, sort by newest first
-          files=$(find posts -maxdepth 1 -type f \( -name "*.md" -o -name "*.markdown" \) -printf "%f\n" | sort -r)
-
-          # Generate JSON (using jq if available, fallback to manual)
-          if ! command -v jq &> /dev/null; then
-            echo "::warning::jq not found. Using manual JSON generation."
-            if [ -z "$files" ]; then
-              echo "[]" > posts/index.json
-            else
-              printf "[\n" > posts/index.json
-              first=true
-              while IFS= read -r file; do
-                if [ "$first" = false ]; then printf ",\n" >> posts/index.json; fi
-                printf '  "%s"' "$file" >> posts/index.json
-                first=false
-              done <<< "$files"
-              printf "\n]\n" >> posts/index.json
-            fi
-          else
-            echo $files | jq -R -s -c 'split("\n") | map(select(. != ""))' > posts/index.json
-          fi
-
-          echo "Generated posts/index.json:"
-          cat posts/index.json
+          
+          # Find all markdown files and extract metadata
+          echo "Generating posts index..."
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const postsDir = 'posts';
+            
+            const files = fs.readdirSync(postsDir)
+              .filter(file => ['.md', '.markdown'].includes(path.extname(file).toLowerCase()))
+              .sort((a, b) => {
+                return fs.statSync(path.join(postsDir, b)).mtimeMs - fs.statSync(path.join(postsDir, a)).mtimeMs;
+              });
+            
+            const index = files.map(file => {
+              const content = fs.readFileSync(path.join(postsDir, file), 'utf8');
+              const titleMatch = content.match(/^title:\s*(.*)$/mi);
+              const dateMatch = content.match(/^date:\s*(.*)$/mi);
+              
+              return {
+                file,
+                title: titleMatch ? titleMatch[1].trim() : path.parse(file).name,
+                date: dateMatch ? dateMatch[1].trim() : fs.statSync(path.join(postsDir, file)).mtime.toISOString(),
+                url: \`/posts/\${path.parse(file).name}\`
+              };
+            });
+            
+            fs.writeFileSync(path.join(postsDir, 'index.json'), JSON.stringify(index, null, 2));
+            console.log(\`Generated index with \${index.length} posts\`);
+          "
 
       - name: Commit and push changes
         if: steps.generate-json.outcome == 'success'
