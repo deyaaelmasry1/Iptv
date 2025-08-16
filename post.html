@@ -1,150 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Post View</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <!-- Header will be injected here -->
-  <div id="header-container"></div>
+class ThemeManager {
+  constructor() {
+    this.templates = {};
+    this.themePath = '/themes/default/';
+  }
 
-  <main class="container mx-auto px-4 py-8 max-w-4xl"> <!-- Changed to max-w-4xl to match index -->
-    <div class="mb-6">
-      <a href="/" class="inline-flex items-center text-blue-600 hover:text-blue-800">
-        <i class="fas fa-arrow-left mr-2"></i> Back to all posts
-      </a>
-    </div>
+  async loadTemplates() {
+    try {
+      // Load all required templates
+      const templatesToLoad = ['header', 'footer'];
+      const templatePromises = templatesToLoad.map(name => 
+        fetch(`${this.themePath}${name}.html`)
+          .then(response => {
+            if (!response.ok) throw new Error(`Failed to load ${name} template`);
+            return response.text();
+          })
+      );
 
-    <div id="post-container">
-      <!-- Loading State -->
-      <div class="text-center py-12">
-        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-        <p class="mt-4 text-gray-500">Loading post content...</p>
-      </div>
-    </div>
-  </main>
+      const [header, footer] = await Promise.all(templatePromises);
+      
+      this.templates = {
+        header,
+        footer
+      };
+    } catch (error) {
+      console.error("Theme loading failed:", error);
+      // Fallback templates
+      this.templates = {
+        header: '<header class="bg-white shadow-sm py-4"><div class="container mx-auto px-4">Header failed to load</div></header>',
+        footer: '<footer class="bg-gray-100 py-6 mt-8"><div class="container mx-auto px-4 text-center">Footer failed to load</div></footer>'
+      };
+    }
+  }
 
-  <!-- Footer will be injected here -->
-  <div id="footer-container"></div>
-
-  <script src="/js/theme-manager.js"></script>
-  <script src="/js/github-api.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        // Load theme first to ensure header/footer are available
-        const theme = new ThemeManager();
-        await theme.loadTemplates();
-        theme.applyTemplate('header', 'header-container');
-        theme.applyTemplate('footer', 'footer-container');
-
-        const container = document.getElementById('post-container');
-        
-        // Extract slug from URL like /posts/2025-08-16-ddfd.html
-        const pathParts = window.location.pathname.split('/');
-        const postSlug = pathParts[pathParts.length - 1].replace('.html', '');
-        
-        if (!postSlug) {
-          container.innerHTML = `
-            <div class="bg-red-50 p-6 rounded-lg">
-              <p class="text-red-600">Invalid post URL</p>
-              <a href="/" class="text-blue-600 hover:underline mt-2 inline-block">Go to homepage</a>
-            </div>
-          `;
-          return;
-        }
-
-        // Build the correct GitHub URL
-        const postUrl = `/posts/${postSlug}.md?nocache=${Date.now()}`;
-        
-        const response = await fetch(postUrl);
-        
-        if (!response.ok) throw new Error('Post not found');
-        
-        const markdown = await response.text();
-        
-        // Extract title from first h1 in markdown or fallback to filename
-        let title = markdown.match(/^#\s+(.+)$/m)?.[1] || 
-                   postSlug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
-                          .replace(/-/g, ' ')
-                          .replace(/\b\w/g, c => c.toUpperCase());
-        
-        // Extract date from filename (YYYY-MM-DD)
-        const postDate = postSlug.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
-        const formattedDate = postDate ? new Date(postDate).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }) : '';
-        
-        document.title = `${title} | My Blog`;
-        
-        // Match the styling from your index page
-        container.innerHTML = `
-          <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <div class="p-6">
-              <div class="flex items-center text-sm text-gray-500 mb-2">
-                <i class="far fa-calendar mr-2"></i>
-                ${formattedDate}
-              </div>
-              <h1 class="text-2xl font-bold text-gray-800 mb-6">${title}</h1>
-              <div class="prose max-w-none" id="post-content"></div>
-            </div>
-          </article>
-        `;
-        
-        // Configure marked to match your index page styling
-        marked.use({
-          baseUrl: `/posts/`,
-          gfm: true,
-          breaks: true,
-          renderer: {
-            paragraph(text) {
-              return `<p class="mb-4">${text}</p>`;
-            },
-            heading(text, level) {
-              const sizes = ['text-2xl', 'text-xl', 'text-lg', 'text-base', 'text-sm', 'text-xs'];
-              return `<h${level} class="${sizes[level-1]} font-bold mt-6 mb-4">${text}</h${level}>`;
-            },
-            link(href, title, text) {
-              return `<a href="${href}" class="text-blue-600 hover:underline"${title ? ` title="${title}"` : ''}>${text}</a>`;
-            },
-            image(src, title, alt) {
-              return `<img src="${src}" alt="${alt || ''}" class="my-4 rounded-lg mx-auto"${title ? ` title="${title}"` : ''}>`;
-            },
-            code(code, infostring) {
-              return `<pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto my-4"><code>${code}</code></pre>`;
-            }
-          }
-        });
-        
-        // Render the markdown (excluding the first h1 if it exists)
-        const contentToRender = markdown.replace(/^#\s+.+\n/, '');
-        document.getElementById('post-content').innerHTML = marked.parse(contentToRender);
-        
-      } catch (error) {
-        const container = document.getElementById('post-container') || document.querySelector('main');
-        container.innerHTML = `
-          <div class="bg-red-50 p-6 rounded-lg text-center">
-            <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-            <h3 class="text-xl font-bold mb-2">Error Loading Post</h3>
-            <p class="mb-4">${error.message || 'Post not found'}</p>
-            <div class="flex justify-center gap-4">
-              <a href="/" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
-                <i class="fas fa-home mr-2"></i> Home
-              </a>
-              <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <i class="fas fa-sync-alt mr-2"></i> Retry
-              </button>
-            </div>
-          </div>
-        `;
-      }
-    });
-  </script>
-</body>
-</html>
+  applyTemplate(name, containerId) {
+    if (!this.templates[name]) {
+      console.error(`Template ${name} not loaded`);
+      return;
+    }
+    
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = this.templates[name];
+    } else {
+      console.error(`Container ${containerId} not found`);
+    }
+  }
+}
