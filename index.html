@@ -1,188 +1,64 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Blog</title>
-  <meta name="description" content="A blog powered by GitHub CMS">
-  
-  <!-- Preload critical resources -->
-  <link rel="preload" href="/Iptv/css/tailwind.css" as="style">
-  <link rel="preload" href="/Iptv/js/marked.js" as="script">
-  <link rel="preload" href="/Iptv/js/github-api.js" as="script">
-  
-  <!-- CSS -->
-  <link href="/Iptv/css/tailwind.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  
-  <!-- Favicon -->
-  <link rel="icon" href="/Iptv/favicon.ico" type="image/x-icon">
+  <link href="/themes/default/style.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-  <!-- Header -->
-  <header id="header-container" class="sticky top-0 z-50"></header>
-
-  <!-- Main Content -->
+<body>
+  <div id="header-container"></div>
+  
   <main class="container mx-auto px-4 py-8 max-w-4xl">
-    <!-- Hero Section -->
-    <section class="mb-12 text-center">
-      <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-800 dark:text-white">Welcome to My Blog</h1>
-      <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-        Discover the latest articles and insights on technology and web development.
-      </p>
-    </section>
-
-    <!-- Posts Section -->
-    <section>
-      <div class="flex justify-between items-center mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Latest Posts</h2>
-        <a href="/Iptv/admin/" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center">
-          <i class="fas fa-plus mr-2"></i> New Post
-        </a>
+    <h1 class="text-3xl font-bold mb-8">Latest Posts</h1>
+    
+    <div id="posts-container">
+      <div class="text-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+        <p class="mt-4 text-gray-500">Loading posts...</p>
       </div>
-
-      <!-- Posts Container -->
-      <div id="posts-container" class="space-y-6">
-        <!-- Loading State -->
-        <div class="text-center py-12">
-          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p class="mt-4 text-gray-500 dark:text-gray-400">Loading posts...</p>
-        </div>
-      </div>
-
-      <!-- Error State (Hidden by default) -->
-      <div id="error-state" class="hidden text-center py-12">
-        <div class="bg-red-50 dark:bg-gray-700 inline-block p-4 rounded-full mb-4">
-          <i class="fas fa-exclamation-triangle text-4xl text-red-500 dark:text-red-400"></i>
-        </div>
-        <h3 class="text-xl font-medium text-gray-800 dark:text-white mb-2">Error Loading Posts</h3>
-        <p class="text-gray-600 dark:text-gray-300 mb-6" id="error-message"></p>
-        <button onclick="window.location.reload()" class="btn btn-secondary">
-          <i class="fas fa-sync-alt mr-2"></i> Try Again
-        </button>
-      </div>
-    </section>
+    </div>
   </main>
+  
+  <div id="footer-container"></div>
 
-  <!-- Footer -->
-  <footer id="footer-container" class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12"></footer>
-
-  <!-- Scripts -->
-  <script src="/Iptv/js/marked.js"></script>
-  <script src="/Iptv/js/github-api.js"></script>
-  <script src="/Iptv/js/theme-manager.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/js/github-api.js"></script>
+  <script src="/js/theme-manager.js"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize theme manager
-    const themeManager = new ThemeManager();
-    await themeManager.loadTemplates();
-    themeManager.applyTemplate('header', 'header-container');
-    themeManager.applyTemplate('footer', 'footer-container');
-
-    // Initialize CMS
+    const theme = new ThemeManager();
     const cms = new GitHubCMS();
-    const container = document.getElementById('posts-container');
-    const errorState = document.getElementById('error-state');
-    const errorMessage = document.getElementById('error-message');
-
-    try {
-      // Show loading state
-      container.innerHTML = `
-        <div class="text-center py-12">
-          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p class="mt-4 text-gray-500 dark:text-gray-400">Loading posts...</p>
-        </div>
-      `;
-
-      // Fetch posts
-      const posts = await cms.getPosts();
-      
-      // Handle empty state
-      if (!posts || posts.length === 0) {
-        container.innerHTML = `
-          <div class="bg-yellow-50 dark:bg-gray-700 p-6 rounded-lg text-center">
-            <i class="far fa-newspaper text-4xl text-yellow-400 dark:text-yellow-300 mb-4"></i>
-            <h3 class="text-xl font-medium text-gray-800 dark:text-white mb-2">No Posts Yet</h3>
-            <p class="text-gray-600 dark:text-gray-300 mb-4">Be the first to create content!</p>
-            <a href="/Iptv/admin/" class="btn btn-primary inline-flex items-center">
-              <i class="fas fa-plus mr-2"></i> Create First Post
+    
+    theme.renderFullPage('home', async () => {
+      try {
+        const posts = await cms.getPosts();
+        const container = document.getElementById('posts-container');
+        
+        if (!posts.length) {
+          container.innerHTML = `
+            <div class="bg-yellow-50 p-4 rounded text-center">
+              No posts yet. <a href="/admin/" class="text-blue-600 underline">Create one?</a>
+            </div>
+          `;
+          return;
+        }
+        
+        container.innerHTML = posts.map(post => `
+          <article class="mb-8 bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+            <h2 class="text-xl font-bold mb-2">
+              ${post.replace(/^\d{4}-\d{2}-\d{2}-|\.md$/g, '').replace(/-/g, ' ')}
+            </h2>
+            <a href="/post/${post.replace('.md', '.html')}" class="text-blue-600 hover:underline">
+              Read post →
             </a>
+          </article>
+        `).join('');
+      } catch (error) {
+        document.getElementById('posts-container').innerHTML = `
+          <div class="bg-red-50 p-4 rounded text-center">
+            Error loading posts: ${error.message}
           </div>
         `;
-        return;
       }
-
-      // Render posts
-      container.innerHTML = '';
-      for (const file of posts) {
-        try {
-          const response = await fetch(`/posts/${file}`);
-          if (!response.ok) continue;
-          
-          const text = await response.text();
-          const title = formatTitle(file);
-          const date = extractDate(file);
-          const excerpt = marked.parse(text.substring(0, 200) + '...';
-          
-          container.innerHTML += `
-            <article class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-              <a href="/Iptv/post/${file.replace('.md', '')}.html" class="block">
-                <div class="p-6">
-                  <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    <span>${date}</span>
-                  </div>
-                  <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-3">${title}</h3>
-                  <div class="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300">${excerpt}</div>
-                  <div class="mt-4 flex items-center text-blue-600 dark:text-blue-400">
-                    <span>Read more</span>
-                    <i class="fas fa-arrow-right ml-2"></i>
-                  </div>
-                </div>
-              </a>
-            </article>
-          `;
-        } catch (err) {
-          console.error(`Error loading post ${file}:`, err);
-        }
-      }
-      
-      // If no posts were successfully loaded
-      if (container.innerHTML === '') {
-        throw new Error('No posts could be loaded');
-      }
-
-    } catch (err) {
-      console.error('Failed to load posts:', err);
-      container.classList.add('hidden');
-      errorMessage.textContent = err.message || 'Failed to load posts. Please try again later.';
-      errorState.classList.remove('hidden');
-    }
-  });
-
-  // Helper functions
-  function formatTitle(filename) {
-    return filename
-      .replace(/^\d{4}-\d{2}-\d{2}-/, '')
-      .replace(/\.md$/, '')
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-  }
-
-  function extractDate(filename) {
-    const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (dateMatch) {
-      try {
-        return new Date(dateMatch[1]).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-      } catch {
-        return dateMatch[1];
-      }
-    }
-    return '';
-  }
+    });
   </script>
 </body>
 </html>
