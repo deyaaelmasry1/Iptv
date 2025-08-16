@@ -35,30 +35,32 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      const theme = new ThemeManager();
-      await theme.loadTemplates();
-      theme.applyTemplate('header', 'header-container');
-      theme.applyTemplate('footer', 'footer-container');
-
-      const cms = new GitHubCMS();
-      const container = document.getElementById('post-container');
-      
-      // Extract slug from URL exactly as you specified
-      const postSlug = window.location.pathname.split('/').pop().replace('.html', '');
-      
-      if (!postSlug) {
-        container.innerHTML = `
-          <div class="bg-red-50 p-6 rounded-lg">
-            <p class="text-red-600">Invalid post URL</p>
-            <a href="/" class="text-blue-600 hover:underline mt-2 inline-block">Go to homepage</a>
-          </div>
-        `;
-        return;
-      }
-
       try {
-        // Build the raw GitHub URL exactly as you specified
-        const postUrl = `https://raw.githubusercontent.com/${cms.owner}/${cms.repo}/main/posts/${postSlug}.md`;
+        // Load theme first to ensure header/footer are available
+        const theme = new ThemeManager();
+        await theme.loadTemplates();
+        theme.applyTemplate('header', 'header-container');
+        theme.applyTemplate('footer', 'footer-container');
+
+        const cms = new GitHubCMS();
+        const container = document.getElementById('post-container');
+        
+        // Extract slug from URL like /posts/2025-08-16-ddfd.html
+        const pathParts = window.location.pathname.split('/');
+        const postSlug = pathParts[pathParts.length - 1].replace('.html', '');
+        
+        if (!postSlug) {
+          container.innerHTML = `
+            <div class="bg-red-50 p-6 rounded-lg">
+              <p class="text-red-600">Invalid post URL</p>
+              <a href="/" class="text-blue-600 hover:underline mt-2 inline-block">Go to homepage</a>
+            </div>
+          `;
+          return;
+        }
+
+        // Build the correct GitHub URL
+        const postUrl = `/posts/${postSlug}.md?nocache=${Date.now()}`;
         
         const response = await fetch(postUrl);
         
@@ -85,33 +87,24 @@
           </article>
         `;
         
-        // Configure marked to handle relative links correctly
+        // Configure marked to handle relative paths correctly
         marked.use({
-          baseUrl: `/post/${postSlug}/`, // Base for relative links
+          baseUrl: `/posts/`,
           renderer: {
             link(href, title, text) {
               // Handle relative file paths
               if (href.startsWith('./') || href.startsWith('../')) {
-                // Resolve relative to post URL
-                const resolvedUrl = new URL(href, `https://example.com/post/${postSlug}/`).pathname;
+                const resolvedUrl = new URL(href, window.location.origin + '/posts/').pathname;
                 return `<a href="${resolvedUrl}"${title ? ` title="${title}"` : ''}>${text}</a>`;
               }
-              // Handle absolute paths to /posts/ directory
-              if (href.startsWith('/posts/')) {
-                // Convert to post view URL
-                const postPath = href.replace('/posts/', '').replace('.md', '');
-                return `<a href="/post/${postPath}.html"${title ? ` title="${title}"` : ''}>${text}</a>`;
-              }
-              // Default behavior for other URLs
               return `<a href="${href}"${title ? ` title="${title}"` : ''}${!href.startsWith('#') ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`;
             },
             image(src, title, alt) {
               // Handle relative image paths
               if (src.startsWith('./') || src.startsWith('../')) {
-                const resolvedSrc = new URL(src, `https://raw.githubusercontent.com/${cms.owner}/${cms.repo}/main/posts/${postSlug}/`).href;
+                const resolvedSrc = new URL(src, window.location.origin + '/posts/').pathname;
                 return `<img src="${resolvedSrc}" alt="${alt || ''}"${title ? ` title="${title}"` : ''} class="my-4 rounded-lg">`;
               }
-              // Default behavior
               return `<img src="${src}" alt="${alt || ''}"${title ? ` title="${title}"` : ''} class="my-4 rounded-lg">`;
             }
           }
@@ -120,6 +113,7 @@
         document.getElementById('post-content').innerHTML = marked.parse(markdown);
         
       } catch (error) {
+        const container = document.getElementById('post-container') || document.querySelector('main');
         container.innerHTML = `
           <div class="bg-red-50 p-6 rounded-lg text-center">
             <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
