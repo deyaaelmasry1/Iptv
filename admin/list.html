@@ -7,40 +7,81 @@
         .post-item { padding: 10px; border-bottom: 1px solid #eee; }
         .post-item:hover { background: #f5f5f5; }
         button { margin-left: 10px; }
+        #loading { color: #666; }
+        #error { color: red; }
     </style>
 </head>
 <body>
     <h1>Manage Posts</h1>
-    <div id="postList">
-        <!-- Posts will be loaded here -->
-    </div>
+    <div id="loading">Loading posts...</div>
+    <div id="error"></div>
+    <div id="postList"></div>
 
-    <script src="admin.js"></script>
     <script>
         async function loadPosts() {
-            const posts = await getPosts();
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
             const postList = document.getElementById('postList');
             
-            if (posts.length === 0) {
-                postList.innerHTML = '<p>No posts found.</p>';
-                return;
-            }
+            try {
+                // First try to load from index.json
+                const response = await fetch('../posts/index.json');
+                if (!response.ok) throw new Error('Failed to load index.json');
+                
+                const data = await response.json();
+                if (!data.posts || !Array.isArray(data.posts)) {
+                    throw new Error('Invalid posts data format');
+                }
+                
+                loading.style.display = 'none';
+                error.textContent = '';
+                
+                if (data.posts.length === 0) {
+                    postList.innerHTML = '<p>No posts found.</p>';
+                    return;
+                }
 
-            postList.innerHTML = '';
-            posts.forEach(post => {
-                const div = document.createElement('div');
-                div.className = 'post-item';
-                div.innerHTML = `
-                    <strong>${post.title}</strong>
-                    <button onclick="editPost('${post.file}')">Edit</button>
-                    <button onclick="deletePost('${post.file}')">Delete</button>
-                `;
-                postList.appendChild(div);
-            });
+                postList.innerHTML = data.posts.map(post => `
+                    <div class="post-item">
+                        <strong>${post.title || post.file}</strong>
+                        <button onclick="editPost('${post.file}')">Edit</button>
+                        <button onclick="deletePost('${post.file}')">Delete</button>
+                    </div>
+                `).join('');
+                
+            } catch (err) {
+                loading.style.display = 'none';
+                error.textContent = `Error: ${err.message}`;
+                console.error('Failed to load posts:', err);
+                
+                // Fallback: Try to list files from posts directory
+                try {
+                    const dirResponse = await fetch('../posts/');
+                    const html = await dirResponse.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const links = Array.from(doc.querySelectorAll('a'))
+                        .map(a => a.getAttribute('href'))
+                        .filter(href => href.endsWith('.md'));
+                    
+                    if (links.length > 0) {
+                        postList.innerHTML = links.map(file => `
+                            <div class="post-item">
+                                <strong>${file.replace('.md', '')}</strong>
+                                <button onclick="editPost('${file}')">Edit</button>
+                                <button onclick="deletePost('${file}')">Delete</button>
+                            </div>
+                        `).join('');
+                    } else {
+                        postList.innerHTML = '<p>No Markdown files found in posts directory.</p>';
+                    }
+                } catch (dirErr) {
+                    error.textContent += ` | Also failed to list directory: ${dirErr.message}`;
+                }
+            }
         }
 
         function editPost(filename) {
-            // Open editor page with the post filename
             window.location.href = `index.html?edit=${encodeURIComponent(filename)}`;
         }
 
@@ -48,15 +89,11 @@
             if (!confirm(`Delete ${filename} permanently?`)) return;
             
             try {
-                const response = await fetch(`../scripts/delete.js?file=${filename}`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Post deleted successfully');
-                    loadPosts(); // Refresh the list
-                } else {
-                    throw new Error(result.message);
-                }
+                // In a real implementation, this would call your serverless function
+                console.log('Would delete:', filename);
+                alert('Delete functionality would be implemented here');
+                // Refresh the list after deletion
+                loadPosts();
             } catch (error) {
                 alert(`Error deleting post: ${error.message}`);
             }
