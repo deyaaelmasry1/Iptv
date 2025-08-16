@@ -1,48 +1,73 @@
-class ThemeManager {
-  constructor() {
-    this.templates = {};
-    this.themePath = '/themes/default/';
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ post.title }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="header-container"></div>
 
-  async loadTemplates() {
-    try {
-      // Load all required templates
-      const templatesToLoad = ['header', 'footer'];
-      const templatePromises = templatesToLoad.map(name => 
-        fetch(`${this.themePath}${name}.html`)
-          .then(response => {
-            if (!response.ok) throw new Error(`Failed to load ${name} template`);
-            return response.text();
-          })
-      );
+  <main class="container mx-auto px-4 py-8 max-w-4xl">
+    <article class="bg-white rounded-lg shadow-md p-6">
+      <div class="flex items-center text-sm text-gray-500 mb-2">
+        <i class="far fa-calendar mr-2"></i>
+        <span id="post-date">{{ post.date }}</span>
+      </div>
+      <h1 id="post-title" class="text-2xl font-bold text-gray-800 mb-6">{{ post.title }}</h1>
+      <div id="post-content" class="prose max-w-none">{{ post.content }}</div>
+    </article>
+  </main>
 
-      const [header, footer] = await Promise.all(templatePromises);
+  <div id="footer-container"></div>
+
+  <script src="/js/theme-manager.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const theme = new ThemeManager();
+      await theme.loadTemplates();
+      theme.applyTemplate('header', 'header-container');
+      theme.applyTemplate('footer', 'footer-container');
+
+      // Fetch and render the post content
+      const path = window.location.pathname;
+      const postFile = path.split('/').pop().replace('.html', '.md');
       
-      this.templates = {
-        header,
-        footer
-      };
-    } catch (error) {
-      console.error("Theme loading failed:", error);
-      // Fallback templates
-      this.templates = {
-        header: '<header class="bg-white shadow-sm py-4"><div class="container mx-auto px-4">Header failed to load</div></header>',
-        footer: '<footer class="bg-gray-100 py-6 mt-8"><div class="container mx-auto px-4 text-center">Footer failed to load</div></footer>'
-      };
-    }
-  }
-
-  applyTemplate(name, containerId) {
-    if (!this.templates[name]) {
-      console.error(`Template ${name} not loaded`);
-      return;
-    }
-    
-    const container = document.getElementById(containerId);
-    if (container) {
-      container.innerHTML = this.templates[name];
-    } else {
-      console.error(`Container ${containerId} not found`);
-    }
-  }
-}
+      try {
+        const response = await fetch(`/posts/${postFile}`);
+        const markdown = await response.text();
+        
+        // Extract date and title from filename if needed
+        const dateMatch = postFile.match(/^(\d{4}-\d{2}-\d{2})-/);
+        const date = dateMatch ? new Date(dateMatch[1]).toLocaleDateString() : '';
+        
+        // Remove date and extension to get title
+        let title = postFile
+          .replace(/^\d{4}-\d{2}-\d{2}-/, '')
+          .replace(/\.md$/, '')
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
+        
+        // Update the page elements
+        document.getElementById('post-date').textContent = date;
+        document.getElementById('post-title').textContent = title;
+        document.getElementById('post-content').innerHTML = marked.parse(markdown);
+        
+        // Update page title
+        document.title = `${title} | My Blog`;
+        
+      } catch (error) {
+        console.error('Error loading post:', error);
+        document.getElementById('post-content').innerHTML = `
+          <div class="bg-red-50 p-4 rounded-lg">
+            <p class="text-red-600">Failed to load post content. Please try again later.</p>
+          </div>
+        `;
+      }
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>
