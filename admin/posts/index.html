@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Posts</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .actions { white-space: nowrap; }
+        .btn { padding: 5px 10px; margin-right: 5px; text-decoration: none; border-radius: 3px; }
+        .btn-edit { background-color: #4CAF50; color: white; }
+        .btn-delete { background-color: #f44336; color: white; }
+        .btn-new { background-color: #2196F3; color: white; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <h1>Posts Management</h1>
+    <a href="edit.html" class="btn btn-new">Create New Post</a>
+    
+    <table id="postsTable">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Slug</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Posts will be loaded here -->
+        </tbody>
+    </table>
+
+    <script>
+        // Fetch posts from index.json
+        fetch('index.json')
+            .then(response => response.json())
+            .then(posts => {
+                const tbody = document.querySelector('#postsTable tbody');
+                
+                posts.forEach(post => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${post.title}</td>
+                        <td>${post.slug}</td>
+                        <td>${new Date(post.date).toLocaleDateString()}</td>
+                        <td class="actions">
+                            <a href="edit.html?slug=${post.slug}" class="btn btn-edit">Edit</a>
+                            <button class="btn btn-delete" data-slug="${post.slug}">Delete</button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                // Add delete event listeners
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const slug = this.getAttribute('data-slug');
+                        if (confirm(`Are you sure you want to delete "${slug}"?`)) {
+                            deletePost(slug);
+                        }
+                    });
+                });
+            })
+            .catch(error => console.error('Error loading posts:', error));
+            
+        function deletePost(slug) {
+            fetch('index.json')
+                .then(response => response.json())
+                .then(posts => {
+                    // Filter out the post to delete
+                    const updatedPosts = posts.filter(post => post.slug !== slug);
+                    
+                    // Save updated list
+                    return fetch('index.json', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedPosts)
+                    });
+                })
+                .then(() => {
+                    alert('Post deleted successfully');
+                    location.reload();
+                })
+                .catch(error => console.error('Error deleting post:', error));
+        }
+    </script>
+</body>
+</html>
